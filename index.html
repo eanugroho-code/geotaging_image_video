@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foto dengan Geotag Manual</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .upload-section {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-section:hover {
+            background: #f0f2ff;
+            border-color: #5a6fd8;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            font-weight: 600;
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        
+        .upload-hint {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .preview-container {
+            position: relative;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 3px solid #e3f2fd;
+        }
+        
+        .watermark-overlay {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 180px;
+        }
+        
+        .pin-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        
+        .watermark-content {
+            flex: 1;
+        }
+        
+        .coordinate-text {
+            font-weight: 600;
+            font-size: 12px;
+            color: #000;
+            margin-bottom: 2px;
+        }
+        
+        .datetime-text {
+            font-weight: 400;
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        .location-text {
+            font-weight: 500;
+            font-size: 10px;
+            color: #4285f4;
+        }
+        
+        .location-form {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-reset {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .btn-download {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-download:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .photo-info {
+            background: #fff3cd;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin: 15px 0;
+            font-size: 13px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📸 Foto dengan Geotag</h1>
+            <p>Ambil foto dan tambahkan lokasi manual</p>
+        </div>
+        
+        <div class="upload-section" onclick="triggerUpload()">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">Klik untuk Mengambil Foto</div>
+            <div class="upload-hint">Format: JPG/PNG • Maks: 5MB</div>
+        </div>
+        <input type="file" id="photoInput" class="hidden" accept="image/*" capture="environment" onchange="processPhoto(this)">
+        
+        <div class="preview-container">
+            <img id="previewImage" class="preview-image hidden">
+            <div id="watermarkOverlay" class="watermark-overlay hidden">
+                <canvas class="pin-icon" width="20" height="20"></canvas>
+                <div class="watermark-content">
+                    <div class="coordinate-text"></div>
+                    <div class="datetime-text"></div>
+                    <div class="location-text"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="photoInfo" class="photo-info hidden">
+            ✅ Foto berhasil diunggah. Silakan isi data lokasi di bawah.
+        </div>
+        
+        <div id="locationForm" class="location-form hidden">
+            <div class="form-group">
+                <label for="latitude">📍 Latitude</label>
+                <input type="text" id="latitude" placeholder="Contoh: -6.2088" pattern="-?\d+\.?\d*">
+            </div>
+            
+            <div class="form-group">
+                <label for="longitude">📍 Longitude</label>
+                <input type="text" id="longitude" placeholder="Contoh: 106.8456" pattern="-?\d+\.?\d*">
+            </div>
+            
+            <div class="form-group">
+                <label for="address">🏠 Alamat Lengkap</label>
+                <input type="text" id="address" placeholder="Contoh: Jl. Merdeka No. 123">
+            </div>
+            
+            <div class="form-group">
+                <label for="city">🏙️ Kota/Kabupaten</label>
+                <input type="text" id="city" placeholder="Contoh: Jakarta Pusat">
+            </div>
+            
+            <div class="form-group">
+                <label for="province">🗺️ Provinsi</label>
+                <input type="text" id="province" placeholder="Contoh: DKI Jakarta">
+            </div>
+            
+            <button type="button" class="btn-download" onclick="addGeotag()">
+                💾 Tambahkan Geotag
+            </button>
+        </div>
+        
+        <div class="action-buttons">
+            <button type="button" class="btn-reset" onclick="resetAll()">
+                🔄 Reset
+            </button>
+            <button type="button" class="btn-download" onclick="downloadPhoto()" id="downloadBtn" disabled>
+                📥 Download Foto
+            </button>
+        </div>
+        
+        <div id="statusMessage" class="status-message hidden"></div>
+    </div>
+
+    <script>
+        // Data untuk menyimpan foto dan lokasi
+        let photoData = {
+            originalDataUrl: '',
+            watermarkedDataUrl: '',
+            location: null,
+            hasGeotag: false
+        };
+
+        // Fungsi untuk menggambar pin Google Maps
+        function drawGoogleMapsPin(ctx, size) {
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const circleRadius = size * 0.3;
+            const triangleHeight = size * 0.4;
+            
+            // Lingkaran merah (badan pin)
+            ctx.fillStyle = '#ea4335';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - triangleHeight * 0.2, circleRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Segitiga merah (ujung pin)
+            ctx.beginPath();
+            ctx.moveTo(centerX - circleRadius * 0.8, centerY - triangleHeight * 0.2);
+            ctx.lineTo(centerX + circleRadius * 0.8, centerY - triangleHeight * 0.2);
+            ctx.lineTo(centerX, centerY + triangleHeight * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Titik putih di tengah
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - triangleHeight * 0.2, circleRadius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Fungsi untuk memicu upload file
+        function triggerUpload() {
+            document.getElementById('photoInput').click();
+        }
+        
+        // Fungsi untuk memproses foto
+        function processPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // Validasi ukuran file (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showStatus('Ukuran file terlalu besar! Maksimal 5MB.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                // Tampilkan preview
+                const preview = document.getElementById('previewImage');
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+
+                // Gambar pin pada watermark
+                const pinCanvas = document.querySelector('#watermarkOverlay .pin-icon');
+                const pinCtx = pinCanvas.getContext('2d');
+                drawGoogleMapsPin(pinCtx, 20);
+
+                // Simpan foto original
+                photoData.originalDataUrl = e.target.result;
+                photoData.hasGeotag = false;
+
+                // Tampilkan info dan form lokasi
+                document.getElementById('photoInfo').classList.remove('hidden');
+                document.getElementById('locationForm').classList.remove('hidden');
+                
+                // Nonaktifkan tombol download sampai geotag ditambahkan
+                document.getElementById('downloadBtn').disabled = true;
+                
+                showStatus('✅ Foto berhasil diunggah. Silakan isi data lokasi.', 'info');
+            };
+            
+            reader.readAsDataURL(file);
+        }
+
+        // Fungsi untuk menambahkan geotag
+        function addGeotag() {
+            const latitude = document.getElementById('latitude').value.trim();
+            const longitude = document.getElementById('longitude').value.trim();
+            const address = document.getElementById('address').value.trim();
+            const city = document.getElementById('city').value.trim();
+            const province = document.getElementById('province').value.trim();
+            
+            // Validasi input
+            if (!latitude || !longitude) {
+                showStatus('❌ Harap masukkan latitude dan longitude!', 'error');
+                return;
+            }
+
+            if (!address || !city || !province) {
+                showStatus('❌ Harap lengkapi semua data alamat!', 'error');
+                return;
+            }
+
+            const lat = parseFloat(latitude);
+            const lng = parseFloat(longitude);
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                showStatus('❌ Format latitude/longitude tidak valid!', 'error');
+                return;
+            }
+
+            // Validasi range koordinat
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                showStatus('❌ Koordinat tidak valid! Latitude: -90 sampai 90, Longitude: -180 sampai 180', 'error');
+                return;
+            }
+
+            // Simpan data lokasi
+            photoData.location = {
+                lat: lat,
+                lng: lng,
+                address: address,
+                city: city,
+                province: province,
+                timestamp: new Date().toISOString()
+            };
+
+            // Buat foto dengan watermark
+            createWatermarkedPhoto().then(() => {
+                // Tampilkan watermark pada preview
+                showWatermark();
+                
+                // Aktifkan tombol download
+                document.getElementById('downloadBtn').disabled = false;
+                
+                // Sembunyikan form lokasi
+                document.getElementById('locationForm').classList.add('hidden');
+                document.getElementById('photoInfo').classList.add('hidden');
+                
+                showStatus('✅ Geotag berhasil ditambahkan! Foto siap didownload.', 'success');
+            }).catch(error => {
+                showStatus('❌ Error menambahkan watermark: ' + error.message, 'error');
+            });
+        }
+
+        // Fungsi untuk membuat foto dengan watermark
+        function createWatermarkedPhoto() {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Set canvas size sama dengan foto
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    // Draw foto asli
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Tambahkan watermark
+                    const location = photoData.location;
+                    const date = new Date(location.timestamp);
+                    
+                    // Hitung ukuran dinamis berdasarkan tinggi foto
+                    const BASE_HEIGHT = 800;
+                    const scaleFactor = canvas.height / BASE_HEIGHT;
+                    const FONT_SIZE_COORD = Math.max(16, 20 * scaleFactor);
+                    const FONT_SIZE_DATETIME = Math.max(12, 14 * scaleFactor);
+                    const FONT_SIZE_LOCATION = Math.max(12, 14 * scaleFactor);
+                    const PADDING = Math.max(15, 20 * scaleFactor);
+                    const PIN_SIZE = Math.max(24, 30 * scaleFactor);
+                    const MARGIN = Math.max(20, 25 * scaleFactor);
+                    
+                    const coordinateText = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+                    const dateTimeText = `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}`;
+                    const locationText = `${location.city}, ${location.province}`;
+                    
+                    // Hitung lebar teks
+                    ctx.font = `600 ${FONT_SIZE_COORD}px Arial`;
+                    const coordWidth = ctx.measureText(coordinateText).width;
+                    
+                    ctx.font = `400 ${FONT_SIZE_DATETIME}px Arial`;
+                    const datetimeWidth = ctx.measureText(dateTimeText).width;
+                    
+                    ctx.font = `500 ${FONT_SIZE_LOCATION}px Arial`;
+                    const locationWidth = ctx.measureText(locationText).width;
+                    
+                    const textWidth = Math.max(coordWidth, datetimeWidth, locationWidth);
+                    const totalWidth = PIN_SIZE + PADDING * 2 + textWidth + PADDING;
+                    const totalHeight = PADDING * 2 + FONT_SIZE_COORD + FONT_SIZE_DATETIME + FONT_SIZE_LOCATION + 8;
+                    
+                    const x = MARGIN;
+                    const y = canvas.height - totalHeight - MARGIN;
+                    
+                    // Background putih transparan
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                    ctx.beginPath();
+                    ctx.roundRect(x, y, totalWidth, totalHeight, 12 * scaleFactor);
+                    ctx.fill();
+                    
+                    // Border subtle
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // Gambar pin Google Maps
+                    const pinX = x + PADDING + PIN_SIZE / 2;
+                    const pinY = y + totalHeight / 2;
+                    drawGoogleMapsPinCustom(ctx, PIN_SIZE, pinX, pinY);
+                    
+                    // Teks koordinat
+                    ctx.font = `600 ${FONT_SIZE_COORD}px Arial`;
+                    ctx.fillStyle = '#000';
+                    ctx.fillText(coordinateText, x + PADDING + PIN_SIZE + PADDING, y + PADDING + FONT_SIZE_COORD);
+                    
+                    // Teks tanggal dan waktu
+                    ctx.font = `400 ${FONT_SIZE_DATETIME}px Arial`;
+                    ctx.fillStyle = '#606060';
+                    ctx.fillText(dateTimeText, x + PADDING + PIN_SIZE + PADDING, y + PADDING + FONT_SIZE_COORD + FONT_SIZE_DATETIME + 4);
+                    
+                    // Teks lokasi
+                    ctx.font = `500 ${FONT_SIZE_LOCATION}px Arial`;
+                    ctx.fillStyle = '#4285f4';
+                    ctx.fillText(locationText, x + PADDING + PIN_SIZE + PADDING, y + PADDING + FONT_SIZE_COORD + FONT_SIZE_DATETIME + FONT_SIZE_LOCATION + 8);
+                    
+                    // Simpan foto dengan watermark
+                    photoData.watermarkedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                    photoData.hasGeotag = true;
+                    
+                    resolve();
+                };
+                
+                img.onerror = reject;
+                img.src = photoData.originalDataUrl;
+            });
+        }
+
+        // Fungsi untuk menggambar pin dengan koordinat custom
+        function drawGoogleMapsPinCustom(ctx, size, x, y) {
+            const centerX = x;
+            const centerY = y;
+            const circleRadius = size * 0.3;
+            const triangleHeight = size * 0.4;
+            
+            // Lingkaran merah (badan pin)
+            ctx.fillStyle = '#ea4335';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - triangleHeight * 0.2, circleRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Segitiga merah (ujung pin)
+            ctx.beginPath();
+            ctx.moveTo(centerX - circleRadius * 0.8, centerY - triangleHeight * 0.2);
+            ctx.lineTo(centerX + circleRadius * 0.8, centerY - triangleHeight * 0.2);
+            ctx.lineTo(centerX, centerY + triangleHeight * 0.8);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Titik putih di tengah
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - triangleHeight * 0.2, circleRadius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Fungsi untuk menampilkan watermark pada preview
+        function showWatermark() {
+            const watermarkElement = document.getElementById('watermarkOverlay');
+            const coordinateElement = watermarkElement.querySelector('.coordinate-text');
+            const datetimeElement = watermarkElement.querySelector('.datetime-text');
+            const locationElement = watermarkElement.querySelector('.location-text');
+            
+            const location = photoData.location;
+            const date = new Date(location.timestamp);
+            
+            coordinateElement.textContent = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+            datetimeElement.textContent = `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}`;
+            locationElement.textContent = `${location.city}, ${location.province}`;
+            
+            watermarkElement.classList.remove('hidden');
+            
+            // Update preview dengan foto yang sudah ada watermark
+            document.getElementById('previewImage').src = photoData.watermarkedDataUrl;
+        }
+
+        // Fungsi untuk download foto
+        function downloadPhoto() {
+            if (!photoData.hasGeotag || !photoData.watermarkedDataUrl) {
+                showStatus('❌ Harap tambahkan geotag terlebih dahulu!', 'error');
+                return;
+            }
+
+            try {
+                // Konversi data URL ke blob
+                fetch(photoData.watermarkedDataUrl)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        // Buat nama file dengan timestamp
+                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                        const fileName = `foto-geotag-${timestamp}.jpg`;
+                        
+                        // Download file
+                        saveAs(blob, fileName);
+                        showStatus('✅ Foto berhasil didownload dengan geotag!', 'success');
+                    })
+                    .catch(error => {
+                        showStatus('❌ Error mendownload foto: ' + error.message, 'error');
+                    });
+                    
+            } catch (error) {
+                showStatus('❌ Error mendownload foto: ' + error.message, 'error');
+            }
+        }
+
+        // Fungsi untuk reset semua
+        function resetAll() {
+            if (confirm('Apakah Anda yakin ingin mereset semua?')) {
+                // Reset form
+                document.getElementById('photoInput').value = '';
+                document.getElementById('latitude').value = '';
+                document.getElementById('longitude').value = '';
+                document.getElementById('address').value = '';
+                document.getElementById('city').value = '';
+                document.getElementById('province').value = '';
+                
+                // Sembunyikan elemen
+                document.getElementById('previewImage').classList.add('hidden');
+                document.getElementById('watermarkOverlay').classList.add('hidden');
+                document.getElementById('locationForm').classList.add('hidden');
+                document.getElementById('photoInfo').classList.add('hidden');
+                document.getElementById('statusMessage').classList.add('hidden');
+                
+                // Nonaktifkan tombol download
+                document.getElementById('downloadBtn').disabled = true;
+                
+                // Reset data
+                photoData = {
+                    originalDataUrl: '',
+                    watermarkedDataUrl: '',
+                    location: null,
+                    hasGeotag: false
+                };
+                
+                showStatus('🔄 Semua data telah direset!', 'info');
+                setTimeout(() => {
+                    document.getElementById('statusMessage').classList.add('hidden');
+                }, 2000);
+            }
+        }
+
+        // Fungsi untuk menampilkan status
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status-message ${type}`;
+            statusElement.classList.remove('hidden');
+        }
+
+        // Validasi input koordinat
+        document.addEventListener('DOMContentLoaded', function() {
+            const latInput = document.getElementById('latitude');
+            const lngInput = document.getElementById('longitude');
+            
+            if (latInput && lngInput) {
+                latInput.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9.-]/g, '');
+                });
+                lngInput.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9.-]/g, '');
+                });
+            }
+
+            // Inisialisasi pin pada contoh
+            const pinCanvas = document.querySelector('#watermarkOverlay .pin-icon');
+            if (pinCanvas) {
+                const pinCtx = pinCanvas.getContext('2d');
+                drawGoogleMapsPin(pinCtx, 20);
+            }
+        });
+    </script>
+</body>
+</html>
