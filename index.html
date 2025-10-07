@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Foto dengan Geotag Manual</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <title>Geotag Camera - Timestamp Camera Style</title>
     <style>
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -26,346 +24,266 @@
         .container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 30px;
-            max-width: 500px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
             width: 100%;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px); /* Safari support */
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .header h1 {
-            color: #2c3e50;
-            font-size: 28px;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-        
-        .header p {
-            color: #7f8c8d;
-            font-size: 16px;
-        }
-        
-        .upload-section {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 40px 20px;
-            text-align: center;
-            margin-bottom: 25px;
-            background: rgba(248, 249, 255, 0.8);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px); /* Safari support */
-        }
-        
-        .upload-section:hover {
-            background: rgba(240, 242, 255, 0.9);
-            border-color: #5a6fd8;
-            transform: translateY(-2px);
-        }
-        
-        .upload-icon {
-            font-size: 48px;
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-        
-        .upload-text {
-            font-weight: 600;
-            color: #2c3e50;
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
-        
-        .upload-hint {
-            color: #7f8c8d;
-            font-size: 14px;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .preview-container {
-            position: relative;
-            margin-bottom: 25px;
-            text-align: center;
-            border-radius: 12px;
+            max-width: 500px;
             overflow: hidden;
         }
         
-        .preview-image {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #4a69bd);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .camera-container {
+            position: relative;
+            background: #000;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .camera-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         
         .watermark-overlay {
             position: absolute;
-            bottom: 15px;
-            left: 15px;
-            background: rgba(255, 255, 255, 0.15);
+            width: 100%;
+            bottom: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 12px 15px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 500;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px); /* Safari support */
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .watermark-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .watermark-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .location-info {
             display: flex;
             align-items: center;
-            gap: 10px;
-            min-width: 200px;
-            transition: all 0.3s ease;
+            gap: 5px;
         }
         
-        .watermark-overlay:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
+        .timestamp-info {
+            font-weight: bold;
+            font-size: 16px;
         }
         
-        .pin-icon {
-            width: 22px;
-            height: 22px;
-            flex-shrink: 0;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        .coordinate-info {
+            font-family: monospace;
         }
         
-        .watermark-content {
-            flex: 1;
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
         }
         
-        .coordinate-text {
-            font-weight: 600;
-            font-size: 12px;
-            color: white;
-            margin-bottom: 3px;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-            letter-spacing: 0.3px;
-        }
-        
-        .datetime-text {
-            font-weight: 400;
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.9);
-            margin-bottom: 3px;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
-        }
-        
-        .location-text {
-            font-weight: 500;
-            font-size: 10px;
-            color: #a8d8ff;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
-        }
-        
-        .location-form {
-            background: rgba(248, 249, 250, 0.8);
-            border-radius: 15px;
-            padding: 25px;
+        .control-group {
             margin-bottom: 20px;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px); /* Safari support */
-            border: 1px solid rgba(255, 255, 255, 0.3);
         }
         
-        .form-group {
-            margin-bottom: 18px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
+        .control-group h3 {
             color: #2c3e50;
-            font-size: 14px;
+            margin-bottom: 10px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
         
-        .form-group input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid rgba(224, 224, 224, 0.8);
-            border-radius: 10px;
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
             font-size: 14px;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.9);
+            color: #2c3e50;
+            font-weight: 500;
         }
         
-        .form-group input:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .input-group input:focus {
+            border-color: #4a69bd;
+            box-shadow: 0 0 0 2px rgba(74, 105, 189, 0.2);
             outline: none;
-            background: white;
-            transform: translateY(-1px);
         }
         
-        .action-buttons {
+        .button-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
         }
         
         button {
-            padding: 16px 25px;
+            padding: 14px;
             border: none;
-            border-radius: 12px;
+            border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 15px;
+            transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px); /* Safari support */
+            font-size: 15px;
+        }
+        
+        .btn-capture {
+            background: linear-gradient(135deg, #4a69bd, #2c3e50);
+            color: white;
+        }
+        
+        .btn-capture:hover {
+            background: linear-gradient(135deg, #3c5aa3, #243342);
+            transform: translateY(-2px);
         }
         
         .btn-reset {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            background: #e74c3c;
             color: white;
-            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
         }
         
         .btn-reset:hover {
-            background: linear-gradient(135deg, #c0392b, #a93226);
+            background: #c0392b;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
         }
         
         .btn-download {
-            background: linear-gradient(135deg, #667eea, #5a6fd8);
+            background: #27ae60;
             color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-        
-        .btn-download:hover {
-            background: linear-gradient(135deg, #5a6fd8, #4a5fc7);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-geotag {
-            background: linear-gradient(135deg, #27ae60, #219a52);
-            color: white;
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
             width: 100%;
             margin-top: 10px;
         }
         
-        .btn-geotag:hover {
-            background: linear-gradient(135deg, #219a52, #1e8849);
+        .btn-download:hover {
+            background: #219a52;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+        
+        .btn-upload {
+            background: #3498db;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn-upload:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .hidden {
+            display: none;
         }
         
         .status-message {
-            padding: 16px;
-            border-radius: 12px;
-            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
             text-align: center;
-            font-weight: 600;
+            font-weight: 500;
             font-size: 14px;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px); /* Safari support */
         }
         
         .success {
-            background: rgba(212, 237, 218, 0.9);
+            background: #d4edda;
             color: #155724;
-            border: 1px solid rgba(195, 230, 203, 0.8);
+            border: 1px solid #c3e6cb;
         }
         
         .error {
-            background: rgba(248, 215, 218, 0.9);
+            background: #f8d7da;
             color: #721c24;
-            border: 1px solid rgba(245, 198, 203, 0.8);
+            border: 1px solid #f5c6cb;
         }
         
         .info {
-            background: rgba(209, 236, 241, 0.9);
+            background: #d1ecf1;
             color: #0c5460;
-            border: 1px solid rgba(190, 229, 235, 0.8);
+            border: 1px solid #bee5eb;
         }
         
-        .photo-info {
-            background: rgba(255, 243, 205, 0.9);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 15px 0;
-            font-size: 14px;
-            color: #856404;
+        .camera-placeholder {
+            color: white;
             text-align: center;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px); /* Safari support */
-            border: 1px solid rgba(255, 234, 167, 0.8);
+            padding: 20px;
         }
         
-        .feature-highlight {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-            border-radius: 10px;
-            padding: 15px;
-            margin: 20px 0;
-            border-left: 4px solid #667eea;
+        .camera-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+            opacity: 0.7;
         }
         
-        .feature-highlight h3 {
-            color: #2c3e50;
-            margin-bottom: 8px;
+        .placeholder-text {
             font-size: 16px;
+            opacity: 0.8;
         }
         
-        .feature-highlight p {
-            color: #7f8c8d;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        /* Fallback untuk browser yang tidak mendukung backdrop-filter */
-        @supports not (backdrop-filter: blur(10px)) {
-            .container, .upload-section, .watermark-overlay, .location-form, .status-message, .photo-info, button {
-                background: rgba(255, 255, 255, 0.98);
-            }
-        }
-
         @media (max-width: 480px) {
-            .container {
-                padding: 20px;
+            .camera-container {
+                height: 300px;
             }
             
-            .action-buttons {
+            .input-row {
                 grid-template-columns: 1fr;
             }
             
-            .watermark-overlay {
-                min-width: 180px;
-                padding: 10px 12px;
+            .button-group {
+                grid-template-columns: 1fr;
             }
             
             .header h1 {
-                font-size: 24px;
-            }
-            
-            .upload-section {
-                padding: 30px 15px;
-            }
-            
-            .location-form {
-                padding: 20px;
+                font-size: 20px;
             }
         }
     </style>
@@ -373,81 +291,74 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📸 Foto dengan Geotag</h1>
-            <p>Ambil foto dan tambahkan lokasi manual dengan style modern</p>
+            <h1>📸 Geotag Camera</h1>
+            <p>Ambil foto dengan timestamp dan lokasi seperti aplikasi Timestamp Camera</p>
         </div>
         
-        <div class="feature-highlight">
-            <h3>🎨 Watermark Glassmorphism</h3>
-            <p>Watermark elegan dengan efek transparan dan blur yang tidak mengganggu konten foto</p>
-        </div>
-        
-        <div class="upload-section" onclick="triggerUpload()">
-            <div class="upload-icon">📷</div>
-            <div class="upload-text">Klik untuk Mengambil Foto</div>
-            <div class="upload-hint">Format: JPG/PNG • Maks: 5MB</div>
-        </div>
-        <input type="file" id="photoInput" class="hidden" accept="image/*" capture="environment" onchange="processPhoto(this)">
-        
-        <div class="preview-container">
-            <img id="previewImage" class="preview-image hidden" alt="Preview foto">
+        <div class="camera-container">
+            <div id="cameraPlaceholder" class="camera-placeholder">
+                <div class="camera-icon">📷</div>
+                <div class="placeholder-text">Klik tombol Ambil Foto untuk memulai</div>
+            </div>
+            <img id="previewImage" class="camera-preview hidden">
             <div id="watermarkOverlay" class="watermark-overlay hidden">
-                <canvas class="pin-icon" width="22" height="22"></canvas>
-                <div class="watermark-content">
-                    <div class="coordinate-text"></div>
-                    <div class="datetime-text"></div>
-                    <div class="location-text"></div>
+                <div class="watermark-row">
+                    <div class="timestamp-info" id="timestampDisplay">Senin, 01 Jan 2024 12:00:00</div>
+                </div>
+                <div class="watermark-row">
+                    <div class="location-info">
+                        <span>📍</span>
+                        <span id="addressDisplay">Jl. Contoh No. 123, Jakarta</span>
+                    </div>
+                </div>
+                <div class="watermark-row">
+                    <div class="coordinate-info" id="coordinateDisplay">Lat: -6.2088, Lng: 106.8456</div>
                 </div>
             </div>
         </div>
         
-        <div id="photoInfo" class="photo-info hidden">
-            ✅ Foto berhasil diunggah. Silakan isi data lokasi di bawah.
-        </div>
-        
-        <div id="locationForm" class="location-form hidden">
-            <div class="form-group">
-                <label for="latitude">📍 Latitude</label>
-                <input type="text" id="latitude" placeholder="Contoh: -6.2088" pattern="-?\d+\.?\d*">
+        <div class="controls">
+            <div class="control-group">
+                <h3>📍 Informasi Lokasi</h3>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="latitude">Latitude</label>
+                        <input type="text" id="latitude" placeholder="-6.2088">
+                    </div>
+                    <div class="input-group">
+                        <label for="longitude">Longitude</label>
+                        <input type="text" id="longitude" placeholder="106.8456">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="address">Alamat Lengkap</label>
+                    <input type="text" id="address" placeholder="Jl. Merdeka No. 123, Jakarta Pusat">
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="longitude">📍 Longitude</label>
-                <input type="text" id="longitude" placeholder="Contoh: 106.8456" pattern="-?\d+\.?\d*">
+            <div class="button-group">
+                <button class="btn-capture" onclick="capturePhoto()">
+                    📷 Ambil Foto
+                </button>
+                <button class="btn-reset" onclick="resetAll()">
+                    🔄 Reset
+                </button>
             </div>
             
-            <div class="form-group">
-                <label for="address">🏠 Alamat Lengkap</label>
-                <input type="text" id="address" placeholder="Contoh: Jl. Merdeka No. 123">
-            </div>
-            
-            <div class="form-group">
-                <label for="city">🏙️ Kota/Kabupaten</label>
-                <input type="text" id="city" placeholder="Contoh: Jakarta Pusat">
-            </div>
-            
-            <div class="form-group">
-                <label for="province">🗺️ Provinsi</label>
-                <input type="text" id="province" placeholder="Contoh: DKI Jakarta">
-            </div>
-            
-            <button type="button" class="btn-geotag" onclick="addGeotag()">
-                💎 Tambahkan Geotag Glassmorphism
+            <button class="btn-upload" onclick="uploadPhoto()" id="uploadBtn">
+                ⬆️ Upload Foto
             </button>
-        </div>
-        
-        <div class="action-buttons">
-            <button type="button" class="btn-reset" onclick="resetAll()">
-                🔄 Reset All
+            
+            <button class="btn-download" onclick="downloadPhoto()" id="downloadBtn" disabled>
+                ⬇️ Download Foto
             </button>
-            <button type="button" class="btn-download" onclick="downloadPhoto()" id="downloadBtn" disabled>
-                📥 Download Foto
-            </button>
+            
+            <div id="statusMessage" class="status-message hidden"></div>
         </div>
-        
-        <div id="statusMessage" class="status-message hidden"></div>
     </div>
 
+    <input type="file" id="photoInput" class="hidden" accept="image/*" capture="environment">
+    
     <script>
         // Data untuk menyimpan foto dan lokasi
         let photoData = {
@@ -457,50 +368,32 @@
             hasGeotag: false
         };
 
-        // Fungsi untuk menggambar pin Google Maps
-        function drawGoogleMapsPin(ctx, size) {
-            const centerX = size / 2;
-            const centerY = size / 2;
-            const circleRadius = size * 0.3;
-            const triangleHeight = size * 0.4;
+        // Format tanggal Indonesia
+        function formatIndonesianDate(date) {
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
             
-            // Lingkaran merah (badan pin)
-            ctx.fillStyle = '#ea4335';
-            ctx.beginPath();
-            ctx.arc(centerX, centerY - triangleHeight * 0.2, circleRadius, 0, Math.PI * 2);
-            ctx.fill();
+            const dayName = days[date.getDay()];
+            const day = date.getDate();
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
             
-            // Segitiga merah (ujung pin)
-            ctx.beginPath();
-            ctx.moveTo(centerX - circleRadius * 0.8, centerY - triangleHeight * 0.2);
-            ctx.lineTo(centerX + circleRadius * 0.8, centerY - triangleHeight * 0.2);
-            ctx.lineTo(centerX, centerY + triangleHeight * 0.8);
-            ctx.closePath();
-            ctx.fill();
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const seconds = date.getSeconds().toString().padStart(2, '0');
             
-            // Titik putih di tengah
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(centerX, centerY - triangleHeight * 0.2, circleRadius * 0.3, 0, Math.PI * 2);
-            ctx.fill();
+            return `${dayName}, ${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
         }
 
-        // Fungsi untuk memicu upload file
-        function triggerUpload() {
+        // Fungsi untuk mengambil foto
+        function capturePhoto() {
             document.getElementById('photoInput').click();
         }
-        
-        // Fungsi untuk memproses foto
+
+        // Fungsi untuk memproses foto yang diambil
         function processPhoto(input) {
             const file = input.files[0];
             if (!file) return;
-
-            // Validasi tipe file
-            const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-            if (!validTypes.includes(file.type)) {
-                showStatus('❌ Format file tidak didukung! Gunakan JPG atau PNG.', 'error');
-                return;
-            }
 
             // Validasi ukuran file (max 5MB)
             if (file.size > 5 * 1024 * 1024) {
@@ -515,282 +408,144 @@
                 const preview = document.getElementById('previewImage');
                 preview.src = e.target.result;
                 preview.classList.remove('hidden');
-
-                // Gambar pin pada watermark preview
-                const pinCanvas = document.querySelector('#watermarkOverlay .pin-icon');
-                const pinCtx = pinCanvas.getContext('2d');
-                drawGoogleMapsPin(pinCtx, 22);
-
+                
+                // Sembunyikan placeholder
+                document.getElementById('cameraPlaceholder').classList.add('hidden');
+                
                 // Simpan foto original
                 photoData.originalDataUrl = e.target.result;
                 photoData.hasGeotag = false;
-
-                // Tampilkan info dan form lokasi
-                document.getElementById('photoInfo').classList.remove('hidden');
-                document.getElementById('locationForm').classList.remove('hidden');
                 
-                // Nonaktifkan tombol download sampai geotag ditambahkan
-                document.getElementById('downloadBtn').disabled = true;
+                // Tampilkan watermark dengan data default
+                updateWatermark();
+                document.getElementById('watermarkOverlay').classList.remove('hidden');
                 
-                // Sembunyikan watermark jika ada
-                document.getElementById('watermarkOverlay').classList.add('hidden');
+                // Aktifkan tombol download
+                document.getElementById('downloadBtn').disabled = false;
                 
-                showStatus('✅ Foto berhasil diunggah. Silakan isi data lokasi.', 'info');
-            };
-            
-            reader.onerror = function() {
-                showStatus('❌ Error membaca file foto.', 'error');
+                showStatus('✅ Foto berhasil diambil. Isi data lokasi untuk memperbarui watermark.', 'info');
             };
             
             reader.readAsDataURL(file);
         }
 
-        // Fungsi untuk menambahkan geotag
-        function addGeotag() {
+        // Fungsi untuk mengupdate watermark
+        function updateWatermark() {
+            const timestampDisplay = document.getElementById('timestampDisplay');
+            const addressDisplay = document.getElementById('addressDisplay');
+            const coordinateDisplay = document.getElementById('coordinateDisplay');
+            
+            // Update timestamp
+            const now = new Date();
+            timestampDisplay.textContent = formatIndonesianDate(now);
+            
+            // Ambil data dari form
             const latitude = document.getElementById('latitude').value.trim();
             const longitude = document.getElementById('longitude').value.trim();
             const address = document.getElementById('address').value.trim();
-            const city = document.getElementById('city').value.trim();
-            const province = document.getElementById('province').value.trim();
             
-            // Validasi input
-            if (!latitude || !longitude) {
-                showStatus('❌ Harap masukkan latitude dan longitude!', 'error');
-                return;
+            // Update koordinat
+            if (latitude && longitude) {
+                coordinateDisplay.textContent = `Lat: ${latitude}, Lng: ${longitude}`;
+            } else {
+                coordinateDisplay.textContent = 'Lat: -6.2088, Lng: 106.8456';
             }
-
-            if (!address || !city || !province) {
-                showStatus('❌ Harap lengkapi semua data alamat!', 'error');
-                return;
-            }
-
-            const lat = parseFloat(latitude);
-            const lng = parseFloat(longitude);
             
-            if (isNaN(lat) || isNaN(lng)) {
-                showStatus('❌ Format latitude/longitude tidak valid!', 'error');
-                return;
+            // Update alamat
+            if (address) {
+                addressDisplay.textContent = address;
+            } else {
+                addressDisplay.textContent = 'Jl. Contoh No. 123, Jakarta';
             }
-
-            // Validasi range koordinat
-            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-                showStatus('❌ Koordinat tidak valid! Latitude: -90 sampai 90, Longitude: -180 sampai 180', 'error');
-                return;
-            }
-
+            
             // Simpan data lokasi
-            photoData.location = {
-                lat: lat,
-                lng: lng,
-                address: address,
-                city: city,
-                province: province,
-                timestamp: new Date().toISOString()
-            };
-
-            // Buat foto dengan watermark glassmorphism
-            createGlassmorphismWatermarkedPhoto().then(() => {
-                // Tampilkan watermark pada preview
-                showWatermark();
-                
-                // Aktifkan tombol download
-                document.getElementById('downloadBtn').disabled = false;
-                
-                // Sembunyikan form lokasi
-                document.getElementById('locationForm').classList.add('hidden');
-                document.getElementById('photoInfo').classList.add('hidden');
-                
-                showStatus('✅ Geotag glassmorphism berhasil ditambahkan! Foto siap didownload.', 'success');
-            }).catch(error => {
-                console.error('Error creating watermarked photo:', error);
-                showStatus('❌ Error menambahkan watermark: ' + error.message, 'error');
-            });
-        }
-
-        // Fungsi untuk membuat foto dengan watermark glassmorphism
-        function createGlassmorphismWatermarkedPhoto() {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = function() {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        
-                        // Set canvas size sama dengan foto
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        
-                        // Draw foto asli
-                        ctx.drawImage(img, 0, 0);
-                        
-                        // Tambahkan watermark glassmorphism
-                        const location = photoData.location;
-                        const date = new Date(location.timestamp);
-                        
-                        // Hitung ukuran dinamis berdasarkan tinggi foto
-                        const BASE_HEIGHT = 800;
-                        const scaleFactor = canvas.height / BASE_HEIGHT;
-                        const FONT_SIZE_COORD = Math.max(16, 20 * scaleFactor);
-                        const FONT_SIZE_DATETIME = Math.max(12, 14 * scaleFactor);
-                        const FONT_SIZE_LOCATION = Math.max(12, 14 * scaleFactor);
-                        const PADDING = Math.max(15, 20 * scaleFactor);
-                        const PIN_SIZE = Math.max(24, 30 * scaleFactor);
-                        const MARGIN = Math.max(20, 25 * scaleFactor);
-                        
-                        const coordinateText = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
-                        const dateTimeText = `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}`;
-                        const locationText = `${location.city}, ${location.province}`;
-                        
-                        // Hitung lebar teks
-                        ctx.font = `600 ${FONT_SIZE_COORD}px Arial`;
-                        const coordWidth = ctx.measureText(coordinateText).width;
-                        
-                        ctx.font = `400 ${FONT_SIZE_DATETIME}px Arial`;
-                        const datetimeWidth = ctx.measureText(dateTimeText).width;
-                        
-                        ctx.font = `500 ${FONT_SIZE_LOCATION}px Arial`;
-                        const locationWidth = ctx.measureText(locationText).width;
-                        
-                        const textWidth = Math.max(coordWidth, datetimeWidth, locationWidth);
-                        const totalWidth = PIN_SIZE + PADDING * 2 + textWidth + PADDING;
-                        const totalHeight = PADDING * 2 + FONT_SIZE_COORD + FONT_SIZE_DATETIME + FONT_SIZE_LOCATION + 8;
-                        
-                        const x = MARGIN;
-                        const y = canvas.height - totalHeight - MARGIN;
-                        
-                        // Background glassmorphism
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-                        ctx.beginPath();
-                        ctx.roundRect(x, y, totalWidth, totalHeight, 12 * scaleFactor);
-                        ctx.fill();
-                        
-                        // Border glassmorphism
-                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-                        
-                        // Gambar pin Google Maps
-                        const pinX = x + PADDING + PIN_SIZE / 2;
-                        const pinY = y + totalHeight / 2;
-                        drawGoogleMapsPinCustom(ctx, PIN_SIZE, pinX, pinY);
-                        
-                        // Teks koordinat dengan shadow
-                        ctx.font = `600 ${FONT_SIZE_COORD}px Arial`;
-                        ctx.fillStyle = 'white';
-                        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-                        ctx.shadowBlur = 3;
-                        ctx.shadowOffsetX = 0;
-                        ctx.shadowOffsetY = 1;
-                        ctx.fillText(coordinateText, x + PADDING + PIN_SIZE + PADDING, y + PADDING + FONT_SIZE_COORD);
-                        
-                        // Teks tanggal dan waktu
-                        ctx.font = `400 ${FONT_SIZE_DATETIME}px Arial`;
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                        ctx.fillText(dateTimeText, x + PADDING + PIN_SIZE + PADDING, y + PADDING + FONT_SIZE_COORD + FONT_SIZE_DATETIME + 4);
-                        
-                        // Teks lokasi
-                        ctx.font = `500 ${FONT_SIZE_LOCATION}px Arial`;
-                        ctx.fillStyle = '#a8d8ff';
-                        ctx.fillText(locationText, x + PADDING + PIN_SIZE + PADDING, y + PADDING + FONT_SIZE_COORD + FONT_SIZE_DATETIME + FONT_SIZE_LOCATION + 8);
-                        
-                        // Reset shadow
-                        ctx.shadowColor = 'transparent';
-                        ctx.shadowBlur = 0;
-                        ctx.shadowOffsetX = 0;
-                        ctx.shadowOffsetY = 0;
-                        
-                        // Simpan foto dengan watermark
-                        photoData.watermarkedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-                        photoData.hasGeotag = true;
-                        
-                        resolve();
-                    } catch (error) {
-                        reject(error);
-                    }
+            if (latitude && longitude && address) {
+                photoData.location = {
+                    lat: parseFloat(latitude),
+                    lng: parseFloat(longitude),
+                    address: address,
+                    timestamp: now.toISOString()
                 };
-                
-                img.onerror = function() {
-                    reject(new Error('Gagal memuat gambar'));
-                };
-                img.src = photoData.originalDataUrl;
-            });
+                photoData.hasGeotag = true;
+            }
         }
 
-        // Fungsi untuk menggambar pin dengan koordinat custom
-        function drawGoogleMapsPinCustom(ctx, size, x, y) {
-            const centerX = x;
-            const centerY = y;
-            const circleRadius = size * 0.3;
-            const triangleHeight = size * 0.4;
-            
-            // Lingkaran merah (badan pin)
-            ctx.fillStyle = '#ea4335';
-            ctx.beginPath();
-            ctx.arc(centerX, centerY - triangleHeight * 0.2, circleRadius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Segitiga merah (ujung pin)
-            ctx.beginPath();
-            ctx.moveTo(centerX - circleRadius * 0.8, centerY - triangleHeight * 0.2);
-            ctx.lineTo(centerX + circleRadius * 0.8, centerY - triangleHeight * 0.2);
-            ctx.lineTo(centerX, centerY + triangleHeight * 0.8);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Titik putih di tengah
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(centerX, centerY - triangleHeight * 0.2, circleRadius * 0.3, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Fungsi untuk menampilkan watermark pada preview
-        function showWatermark() {
-            const watermarkElement = document.getElementById('watermarkOverlay');
-            const coordinateElement = watermarkElement.querySelector('.coordinate-text');
-            const datetimeElement = watermarkElement.querySelector('.datetime-text');
-            const locationElement = watermarkElement.querySelector('.location-text');
-            
-            const location = photoData.location;
-            const date = new Date(location.timestamp);
-            
-            coordinateElement.textContent = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
-            datetimeElement.textContent = `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}`;
-            locationElement.textContent = `${location.city}, ${location.province}`;
-            
-            watermarkElement.classList.remove('hidden');
-            
-            // Update preview dengan foto yang sudah ada watermark
-            document.getElementById('previewImage').src = photoData.watermarkedDataUrl;
+        // Fungsi untuk upload foto
+        function uploadPhoto() {
+            document.getElementById('photoInput').click();
         }
 
         // Fungsi untuk download foto
         function downloadPhoto() {
-            if (!photoData.hasGeotag || !photoData.watermarkedDataUrl) {
-                showStatus('❌ Harap tambahkan geotag terlebih dahulu!', 'error');
+            if (!photoData.originalDataUrl) {
+                showStatus('❌ Tidak ada foto untuk didownload!', 'error');
                 return;
             }
 
             try {
-                // Konversi data URL ke blob
-                fetch(photoData.watermarkedDataUrl)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        // Buat nama file dengan timestamp
-                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                        const fileName = `foto-geotag-${timestamp}.jpg`;
-                        
-                        // Download file
-                        saveAs(blob, fileName);
-                        showStatus('✅ Foto berhasil didownload dengan geotag glassmorphism!', 'success');
-                    })
-                    .catch(error => {
-                        console.error('Error downloading photo:', error);
-                        showStatus('❌ Error mendownload foto: ' + error.message, 'error');
-                    });
+                // Buat canvas untuk menambahkan watermark
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
                     
+                    // Set canvas size sama dengan foto
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    // Draw foto asli
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Tambahkan watermark
+                    const latitude = document.getElementById('latitude').value.trim() || '-6.2088';
+                    const longitude = document.getElementById('longitude').value.trim() || '106.8456';
+                    const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
+                    const now = new Date();
+                    
+                    // Hitung ukuran watermark berdasarkan tinggi foto
+                    const scaleFactor = canvas.height / 800;
+                    const fontSize = Math.max(14, 16 * scaleFactor);
+                    const padding = Math.max(10, 15 * scaleFactor);
+                    
+                    // Background watermark
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(0, canvas.height - padding * 3 - fontSize * 3, canvas.width, padding * 3 + fontSize * 3);
+                    
+                    // Teks timestamp
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(formatIndonesianDate(now), padding, canvas.height - padding * 2 - fontSize * 2);
+                    
+                    // Teks alamat
+                    ctx.font = `${fontSize}px Arial`;
+                    ctx.fillText(address, padding, canvas.height - padding - fontSize);
+                    
+                    // Teks koordinat
+                    ctx.font = `${fontSize}px monospace`;
+                    ctx.fillText(`Lat: ${latitude}, Lng: ${longitude}`, padding, canvas.height - padding);
+                    
+                    // Konversi ke blob dan download
+                    canvas.toBlob(function(blob) {
+                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                        const fileName = `geotag-camera-${timestamp}.jpg`;
+                        
+                        // Buat URL untuk download
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        
+                        showStatus('✅ Foto berhasil didownload dengan watermark!', 'success');
+                    }, 'image/jpeg', 0.9);
+                };
+                
+                img.src = photoData.originalDataUrl;
+                
             } catch (error) {
-                console.error('Error downloading photo:', error);
                 showStatus('❌ Error mendownload foto: ' + error.message, 'error');
             }
         }
@@ -799,19 +554,14 @@
         function resetAll() {
             if (confirm('Apakah Anda yakin ingin mereset semua?')) {
                 // Reset form
-                document.getElementById('photoInput').value = '';
                 document.getElementById('latitude').value = '';
                 document.getElementById('longitude').value = '';
                 document.getElementById('address').value = '';
-                document.getElementById('city').value = '';
-                document.getElementById('province').value = '';
                 
-                // Sembunyikan elemen
+                // Reset preview
                 document.getElementById('previewImage').classList.add('hidden');
                 document.getElementById('watermarkOverlay').classList.add('hidden');
-                document.getElementById('locationForm').classList.add('hidden');
-                document.getElementById('photoInfo').classList.add('hidden');
-                document.getElementById('statusMessage').classList.add('hidden');
+                document.getElementById('cameraPlaceholder').classList.remove('hidden');
                 
                 // Nonaktifkan tombol download
                 document.getElementById('downloadBtn').disabled = true;
@@ -839,26 +589,19 @@
             statusElement.classList.remove('hidden');
         }
 
-        // Validasi input koordinat
-        document.addEventListener('DOMContentLoaded', function() {
-            const latInput = document.getElementById('latitude');
-            const lngInput = document.getElementById('longitude');
-            
-            if (latInput && lngInput) {
-                latInput.addEventListener('input', function() {
-                    this.value = this.value.replace(/[^0-9.-]/g, '');
-                });
-                lngInput.addEventListener('input', function() {
-                    this.value = this.value.replace(/[^0-9.-]/g, '');
-                });
-            }
+        // Event listener untuk input file
+        document.getElementById('photoInput').addEventListener('change', function() {
+            processPhoto(this);
+        });
 
-            // Inisialisasi pin pada contoh
-            const pinCanvas = document.querySelector('#watermarkOverlay .pin-icon');
-            if (pinCanvas) {
-                const pinCtx = pinCanvas.getContext('2d');
-                drawGoogleMapsPin(pinCtx, 22);
-            }
+        // Event listener untuk update watermark saat form berubah
+        document.getElementById('latitude').addEventListener('input', updateWatermark);
+        document.getElementById('longitude').addEventListener('input', updateWatermark);
+        document.getElementById('address').addEventListener('input', updateWatermark);
+
+        // Inisialisasi watermark dengan data default
+        document.addEventListener('DOMContentLoaded', function() {
+            updateWatermark();
         });
     </script>
 </body>
