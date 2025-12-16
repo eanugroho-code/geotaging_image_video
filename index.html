@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geotag Camera & Video - Custom Time Watermark</title>
+    <title>Geotag Camera - Waktu Berjalan & Koordinat Tetap</title>
     <style>
         * {
             margin: 0;
@@ -509,22 +509,26 @@
                 </div>
                 
                 <div class="time-control">
-                    <h4>🕐 Waktu Watermark</h4>
+                    <h4>🕐 Waktu Awal Video</h4>
                     <div class="time-inputs">
                         <div class="input-group">
-                            <label for="customDate">Tanggal</label>
-                            <input type="date" id="customDate">
+                            <label for="startDate">Tanggal Mulai</label>
+                            <input type="date" id="startDate">
                         </div>
                         <div class="input-group">
-                            <label for="customTime">Waktu</label>
-                            <input type="time" id="customTime" value="12:00">
+                            <label for="startTime">Waktu Mulai</label>
+                            <input type="time" id="startTime" value="12:00">
                         </div>
                     </div>
                     <div class="time-options">
-                        <button class="time-btn active" onclick="setTimeNow()">Waktu Sekarang</button>
-                        <button class="time-btn" onclick="setTimeYesterday()">Kemarin</button>
-                        <button class="time-btn" onclick="setTimeTomorrow()">Besok</button>
-                        <button class="time-btn" onclick="setCustomTime()">Custom</button>
+                        <button class="time-btn active" onclick="setStartTimeNow()">Waktu Sekarang</button>
+                        <button class="time-btn" onclick="setStartTimeYesterday()">Kemarin</button>
+                        <button class="time-btn" onclick="setStartTimeTomorrow()">Besok</button>
+                        <button class="time-btn" onclick="setCustomStartTime()">Custom</button>
+                    </div>
+                    <div class="checkbox-group" style="margin-top: 10px; display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="timeRunning" checked>
+                        <label for="timeRunning" style="font-size: 12px;">Waktu berjalan real-time</label>
                     </div>
                 </div>
                 
@@ -536,6 +540,7 @@
                             <option value="randomize">Acak sedikit (±0.001)</option>
                             <option value="offset">Geser koordinat</option>
                             <option value="swap">Tukar Lat/Lng</option>
+                            <option value="fake">Koordinat acak di Indonesia</option>
                         </select>
                         <input type="number" id="offsetValue" placeholder="Offset (derajat)" step="0.0001" value="0.001">
                     </div>
@@ -593,7 +598,25 @@
         let recordingTimer = null;
         let recordingStartTime = null;
         let stream = null;
-        let customDateTime = new Date(); // Untuk menyimpan waktu custom
+        let videoStartTime = new Date(); // Waktu awal video
+        let timeInterval = null; // Interval untuk update waktu
+        let isTimeRunning = true; // Waktu berjalan atau tidak
+        
+        // Koordinat yang sudah direkayasa (tetap selama sesi)
+        let manipulatedCoords = {
+            lat: '-6.2088',
+            lng: '106.8456'
+        };
+
+        // Data untuk menyimpan media dan lokasi
+        let mediaData = {
+            originalDataUrl: '',
+            watermarkedDataUrl: '',
+            location: null,
+            hasGeotag: false,
+            type: 'photo',
+            videoBlob: null
+        };
 
         // Format tanggal Indonesia
         function formatIndonesianDate(date) {
@@ -623,9 +646,9 @@
         }
 
         // Fungsi untuk mendapatkan waktu custom dari input
-        function getCustomDateTime() {
-            const dateInput = document.getElementById('customDate').value;
-            const timeInput = document.getElementById('customTime').value;
+        function getStartDateTime() {
+            const dateInput = document.getElementById('startDate').value;
+            const timeInput = document.getElementById('startTime').value;
             
             if (dateInput && timeInput) {
                 // Gabungkan tanggal dan waktu
@@ -642,40 +665,40 @@
         }
 
         // Fungsi untuk set waktu ke sekarang
-        function setTimeNow() {
+        function setStartTimeNow() {
             const now = new Date();
-            customDateTime = now;
-            document.getElementById('customDate').value = formatDateForInput(now);
-            document.getElementById('customTime').value = formatTimeForInput(now);
+            videoStartTime = now;
+            document.getElementById('startDate').value = formatDateForInput(now);
+            document.getElementById('startTime').value = formatTimeForInput(now);
             updateWatermark();
             updateTimeButtons('now');
         }
 
         // Fungsi untuk set waktu ke kemarin
-        function setTimeYesterday() {
+        function setStartTimeYesterday() {
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
-            customDateTime = yesterday;
-            document.getElementById('customDate').value = formatDateForInput(yesterday);
-            document.getElementById('customTime').value = formatTimeForInput(yesterday);
+            videoStartTime = yesterday;
+            document.getElementById('startDate').value = formatDateForInput(yesterday);
+            document.getElementById('startTime').value = formatTimeForInput(yesterday);
             updateWatermark();
             updateTimeButtons('yesterday');
         }
 
         // Fungsi untuk set waktu ke besok
-        function setTimeTomorrow() {
+        function setStartTimeTomorrow() {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            customDateTime = tomorrow;
-            document.getElementById('customDate').value = formatDateForInput(tomorrow);
-            document.getElementById('customTime').value = formatTimeForInput(tomorrow);
+            videoStartTime = tomorrow;
+            document.getElementById('startDate').value = formatDateForInput(tomorrow);
+            document.getElementById('startTime').value = formatTimeForInput(tomorrow);
             updateWatermark();
             updateTimeButtons('tomorrow');
         }
 
         // Fungsi untuk set waktu custom
-        function setCustomTime() {
-            customDateTime = getCustomDateTime();
+        function setCustomStartTime() {
+            videoStartTime = getStartDateTime();
             updateWatermark();
             updateTimeButtons('custom');
         }
@@ -693,6 +716,131 @@
                 document.querySelector('.time-btn:nth-child(3)').classList.add('active');
             } else {
                 document.querySelector('.time-btn:nth-child(4)').classList.add('active');
+            }
+        }
+
+        // Fungsi untuk rekayasa koordinat (hanya dijalankan sekali)
+        function manipulateCoordinatesOnce(lat, lng) {
+            const operation = document.getElementById('coordOperation').value;
+            const offset = parseFloat(document.getElementById('offsetValue').value) || 0.001;
+            
+            let newLat = parseFloat(lat);
+            let newLng = parseFloat(lng);
+            
+            if (isNaN(newLat) || isNaN(newLng)) {
+                newLat = -6.2088;
+                newLng = 106.8456;
+            }
+            
+            switch(operation) {
+                case 'randomize':
+                    // Tambahkan nilai random kecil (±0.001)
+                    newLat += (Math.random() - 0.5) * 0.002;
+                    newLng += (Math.random() - 0.5) * 0.002;
+                    break;
+                    
+                case 'offset':
+                    // Geser koordinat dengan offset tertentu
+                    newLat += offset;
+                    newLng += offset;
+                    break;
+                    
+                case 'swap':
+                    // Tukar latitude dan longitude
+                    [newLat, newLng] = [newLng, newLat];
+                    break;
+                    
+                case 'fake':
+                    // Koordinat acak di Indonesia
+                    newLat = -6.2 + (Math.random() - 0.5) * 10;
+                    newLng = 106.8 + (Math.random() - 0.5) * 10;
+                    break;
+                    
+                case 'none':
+                default:
+                    // Tidak ada perubahan
+                    break;
+            }
+            
+            // Batasi koordinat ke wilayah Indonesia (sekitar)
+            newLat = Math.max(-11, Math.min(6, newLat));
+            newLng = Math.max(95, Math.min(141, newLng));
+            
+            // Simpan koordinat yang sudah direkayasa
+            manipulatedCoords = {
+                lat: newLat.toFixed(6),
+                lng: newLng.toFixed(6)
+            };
+            
+            return manipulatedCoords;
+        }
+
+        // Fungsi untuk update watermark dengan waktu berjalan
+        function updateWatermark() {
+            const timestampDisplay = document.getElementById('timestampDisplay');
+            const addressDisplay = document.getElementById('addressDisplay');
+            const coordinateDisplay = document.getElementById('coordinateDisplay');
+            
+            // Cek apakah waktu harus berjalan
+            isTimeRunning = document.getElementById('timeRunning').checked;
+            
+            let currentDisplayTime;
+            if (isTimeRunning && videoStartTime) {
+                // Waktu berjalan dari waktu awal
+                const elapsed = new Date().getTime() - (new Date()).getTime() + videoStartTime.getTime();
+                currentDisplayTime = new Date(elapsed);
+            } else if (videoStartTime) {
+                // Waktu tetap pada waktu awal
+                currentDisplayTime = new Date(videoStartTime);
+            } else {
+                // Waktu sekarang
+                currentDisplayTime = new Date();
+            }
+            
+            timestampDisplay.textContent = formatIndonesianDate(currentDisplayTime);
+            
+            // Ambil data dari form
+            const latitude = document.getElementById('latitude').value.trim();
+            const longitude = document.getElementById('longitude').value.trim();
+            const address = document.getElementById('address').value.trim();
+            
+            // Jika ada koordinat baru, rekayasa dan simpan
+            if (latitude && longitude) {
+                manipulateCoordinatesOnce(latitude, longitude);
+            }
+            
+            // Gunakan koordinat yang sudah direkayasa (tetap)
+            coordinateDisplay.textContent = `Lat: ${manipulatedCoords.lat}, Lng: ${manipulatedCoords.lng}`;
+            
+            // Update alamat
+            if (address) {
+                addressDisplay.textContent = address;
+            } else {
+                addressDisplay.textContent = 'Jl. Contoh No. 123, Jakarta';
+            }
+            
+            // Simpan data lokasi
+            if (address) {
+                mediaData.location = {
+                    lat: parseFloat(manipulatedCoords.lat),
+                    lng: parseFloat(manipulatedCoords.lng),
+                    address: address,
+                    timestamp: currentDisplayTime.toISOString(),
+                    manipulated: document.getElementById('coordOperation').value !== 'none'
+                };
+                mediaData.hasGeotag = true;
+            }
+        }
+
+        // Fungsi untuk memulai interval update waktu
+        function startTimeUpdate() {
+            if (timeInterval) {
+                clearInterval(timeInterval);
+            }
+            
+            // Update watermark setiap detik jika waktu berjalan
+            if (isTimeRunning) {
+                timeInterval = setInterval(updateWatermark, 1000);
             }
         }
 
@@ -727,6 +875,9 @@
             
             // Reset preview jika ada
             resetPreview();
+            
+            // Mulai update waktu
+            startTimeUpdate();
         }
 
         // Fungsi untuk mengambil foto atau memulai rekaman
@@ -957,107 +1108,6 @@
             showStatus('✅ Video berhasil diupload. Isi data lokasi untuk memperbarui watermark.', 'info');
         }
 
-        // Data untuk menyimpan media dan lokasi
-        let mediaData = {
-            originalDataUrl: '',
-            watermarkedDataUrl: '',
-            location: null,
-            hasGeotag: false,
-            type: 'photo',
-            videoBlob: null
-        };
-
-        // Fungsi untuk rekayasa koordinat
-        function manipulateCoordinates(lat, lng) {
-            const operation = document.getElementById('coordOperation').value;
-            const offset = parseFloat(document.getElementById('offsetValue').value) || 0.001;
-            
-            let newLat = parseFloat(lat);
-            let newLng = parseFloat(lng);
-            
-            if (isNaN(newLat) || isNaN(newLng)) {
-                return { lat: lat, lng: lng };
-            }
-            
-            switch(operation) {
-                case 'randomize':
-                    // Tambahkan nilai random kecil (±0.001)
-                    newLat += (Math.random() - 0.5) * 0.002;
-                    newLng += (Math.random() - 0.5) * 0.002;
-                    break;
-                    
-                case 'offset':
-                    // Geser koordinat dengan offset tertentu
-                    newLat += offset;
-                    newLng += offset;
-                    break;
-                    
-                case 'swap':
-                    // Tukar latitude dan longitude
-                    [newLat, newLng] = [newLng, newLat];
-                    break;
-                    
-                case 'none':
-                default:
-                    // Tidak ada perubahan
-                    break;
-            }
-            
-            // Format ke 6 desimal
-            return {
-                lat: newLat.toFixed(6),
-                lng: newLng.toFixed(6)
-            };
-        }
-
-        // Fungsi untuk mengupdate watermark
-        function updateWatermark() {
-            const timestampDisplay = document.getElementById('timestampDisplay');
-            const addressDisplay = document.getElementById('addressDisplay');
-            const coordinateDisplay = document.getElementById('coordinateDisplay');
-            
-            // Update timestamp dengan waktu custom
-            timestampDisplay.textContent = formatIndonesianDate(customDateTime);
-            
-            // Ambil data dari form
-            let latitude = document.getElementById('latitude').value.trim();
-            let longitude = document.getElementById('longitude').value.trim();
-            const address = document.getElementById('address').value.trim();
-            
-            // Terapkan rekayasa koordinat jika ada data
-            if (latitude && longitude) {
-                const manipulated = manipulateCoordinates(latitude, longitude);
-                latitude = manipulated.lat;
-                longitude = manipulated.lng;
-            }
-            
-            // Update koordinat
-            if (latitude && longitude) {
-                coordinateDisplay.textContent = `Lat: ${latitude}, Lng: ${longitude}`;
-            } else {
-                coordinateDisplay.textContent = 'Lat: -6.2088, Lng: 106.8456';
-            }
-            
-            // Update alamat
-            if (address) {
-                addressDisplay.textContent = address;
-            } else {
-                addressDisplay.textContent = 'Jl. Contoh No. 123, Jakarta';
-            }
-            
-            // Simpan data lokasi
-            if (latitude && longitude && address) {
-                mediaData.location = {
-                    lat: parseFloat(latitude),
-                    lng: parseFloat(longitude),
-                    address: address,
-                    timestamp: customDateTime.toISOString(),
-                    manipulated: document.getElementById('coordOperation').value !== 'none'
-                };
-                mediaData.hasGeotag = true;
-            }
-        }
-
         // Fungsi untuk upload media
         function uploadMedia() {
             if (currentMode === 'photo') {
@@ -1100,10 +1150,9 @@
                 // Draw foto asli
                 ctx.drawImage(img, 0, 0);
                 
-                // Tambahkan watermark dengan waktu custom
-                const latitude = document.getElementById('latitude').value.trim() || '-6.2088';
-                const longitude = document.getElementById('longitude').value.trim() || '106.8456';
+                // Tambahkan watermark dengan koordinat tetap
                 const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
+                const currentTime = new Date();
                 
                 // Hitung ukuran watermark berdasarkan tinggi foto
                 const scaleFactor = canvas.height / 800;
@@ -1114,18 +1163,18 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(0, canvas.height - padding * 3 - fontSize * 3, canvas.width, padding * 3 + fontSize * 3);
                 
-                // Teks timestamp dengan waktu custom
+                // Teks timestamp (waktu saat download)
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.fillStyle = 'white';
-                ctx.fillText(formatIndonesianDate(customDateTime), padding, canvas.height - padding * 2 - fontSize * 2);
+                ctx.fillText(formatIndonesianDate(currentTime), padding, canvas.height - padding * 2 - fontSize * 2);
                 
                 // Teks alamat
                 ctx.font = `${fontSize}px Arial`;
                 ctx.fillText(address, padding, canvas.height - padding - fontSize);
                 
-                // Teks koordinat
+                // Teks koordinat (tetap menggunakan yang sudah direkayasa)
                 ctx.font = `${fontSize}px monospace`;
-                ctx.fillText(`Lat: ${latitude}, Lng: ${longitude}`, padding, canvas.height - padding);
+                ctx.fillText(`Lat: ${manipulatedCoords.lat}, Lng: ${manipulatedCoords.lng}`, padding, canvas.height - padding);
                 
                 // Konversi ke blob dan download
                 canvas.toBlob(function(blob) {
@@ -1149,7 +1198,7 @@
             img.src = mediaData.originalDataUrl;
         }
 
-        // Fungsi untuk download video dengan watermark
+        // Fungsi untuk download video dengan watermark (waktu berjalan, koordinat tetap)
         async function downloadVideoWithWatermark() {
             showStatus('⏳ Sedang memproses video dengan watermark...', 'info');
             
@@ -1199,10 +1248,11 @@
                 // Draw video frame
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // Tambahkan watermark dengan waktu custom
-                const latitude = document.getElementById('latitude').value.trim() || '-6.2088';
-                const longitude = document.getElementById('longitude').value.trim() || '106.8456';
+                // Tambahkan watermark dengan waktu berjalan dan koordinat tetap
                 const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
+                
+                // Hitung waktu untuk frame ini (berjalan dari waktu awal video)
+                const frameTime = new Date(videoStartTime.getTime() + (video.currentTime * 1000));
                 
                 // Hitung ukuran watermark
                 const scaleFactor = canvas.height / 800;
@@ -1213,20 +1263,18 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(0, canvas.height - padding * 3 - fontSize * 3, canvas.width, padding * 3 + fontSize * 3);
                 
-                // Teks timestamp dengan waktu custom
+                // Teks timestamp (waktu berjalan sesuai frame)
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.fillStyle = 'white';
-                // Untuk video, kita bisa menggunakan waktu custom atau waktu real-time
-                // Di sini kita gunakan waktu custom yang tetap
-                ctx.fillText(formatIndonesianDate(customDateTime), padding, canvas.height - padding * 2 - fontSize * 2);
+                ctx.fillText(formatIndonesianDate(frameTime), padding, canvas.height - padding * 2 - fontSize * 2);
                 
                 // Teks alamat
                 ctx.font = `${fontSize}px Arial`;
                 ctx.fillText(address, padding, canvas.height - padding - fontSize);
                 
-                // Teks koordinat
+                // Teks koordinat (tetap sama untuk semua frame)
                 ctx.font = `${fontSize}px monospace`;
-                ctx.fillText(`Lat: ${latitude}, Lng: ${longitude}`, padding, canvas.height - padding);
+                ctx.fillText(`Lat: ${manipulatedCoords.lat}, Lng: ${manipulatedCoords.lng}`, padding, canvas.height - padding);
                 
                 // Request frame berikutnya
                 requestAnimationFrame(drawFrame);
@@ -1248,6 +1296,12 @@
             // Stop recording jika sedang berlangsung
             if (isRecording) {
                 stopRecording();
+            }
+            
+            // Stop interval waktu
+            if (timeInterval) {
+                clearInterval(timeInterval);
+                timeInterval = null;
             }
             
             // Reset preview elements
@@ -1275,7 +1329,13 @@
                 document.getElementById('offsetValue').value = '0.001';
                 
                 // Reset waktu ke sekarang
-                setTimeNow();
+                setStartTimeNow();
+                
+                // Reset koordinat yang sudah direkayasa
+                manipulatedCoords = {
+                    lat: '-6.2088',
+                    lng: '106.8456'
+                };
                 
                 // Reset preview
                 resetPreview();
@@ -1327,13 +1387,33 @@
         document.getElementById('address').addEventListener('input', updateWatermark);
         document.getElementById('coordOperation').addEventListener('change', updateWatermark);
         document.getElementById('offsetValue').addEventListener('input', updateWatermark);
-        document.getElementById('customDate').addEventListener('change', setCustomTime);
-        document.getElementById('customTime').addEventListener('change', setCustomTime);
+        document.getElementById('startDate').addEventListener('change', setCustomStartTime);
+        document.getElementById('startTime').addEventListener('change', setCustomStartTime);
+        document.getElementById('timeRunning').addEventListener('change', function() {
+            isTimeRunning = this.checked;
+            if (isTimeRunning) {
+                startTimeUpdate();
+            } else if (timeInterval) {
+                clearInterval(timeInterval);
+                timeInterval = null;
+            }
+            updateWatermark();
+        });
 
         // Inisialisasi watermark dengan data default
         document.addEventListener('DOMContentLoaded', function() {
             // Set waktu default ke sekarang
-            setTimeNow();
+            setStartTimeNow();
+            
+            // Set koordinat default
+            manipulatedCoords = {
+                lat: '-6.2088',
+                lng: '106.8456'
+            };
+            
+            // Mulai update waktu
+            startTimeUpdate();
+            
             updateWatermark();
         });
     </script>
