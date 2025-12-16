@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geotag Camera & Video - Timestamp Camera Style</title>
+    <title>Geotag Camera & Video - MP4 dengan Waktu Custom</title>
     <style>
         * {
             margin: 0;
@@ -26,7 +26,7 @@
             border-radius: 20px;
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
             width: 100%;
-            max-width: 600px;
+            max-width: 650px;
             overflow: hidden;
         }
         
@@ -204,6 +204,63 @@
             outline: none;
         }
         
+        .time-controls {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .time-controls h4 {
+            color: #856404;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .time-inputs input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ffd43b;
+            border-radius: 5px;
+            background: white;
+        }
+        
+        .time-options {
+            margin-top: 10px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .time-btn {
+            padding: 6px 12px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .time-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .time-btn.active {
+            background: #4a69bd;
+            color: white;
+            border-color: #4a69bd;
+        }
+        
         .coord-manipulation {
             background: #e3f2fd;
             padding: 15px;
@@ -338,6 +395,12 @@
             border: 1px solid #bee5eb;
         }
         
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
         .camera-placeholder {
             color: white;
             text-align: center;
@@ -372,12 +435,28 @@
             font-family: monospace;
         }
         
+        .progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: #4a69bd;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        
         @media (max-width: 480px) {
             .camera-container {
                 height: 300px;
             }
             
-            .input-row, .manipulation-controls {
+            .input-row, .manipulation-controls, .time-inputs {
                 grid-template-columns: 1fr;
             }
             
@@ -399,7 +478,7 @@
     <div class="container">
         <div class="header">
             <h1>📸🎥 Geotag Camera & Video</h1>
-            <p>Ambil foto dan rekam video dengan timestamp, lokasi, dan watermark</p>
+            <p>Ambil foto dan rekam video dengan timestamp custom, lokasi, dan watermark</p>
             <div class="mode-selector">
                 <button class="mode-btn active" id="photoModeBtn" onclick="switchMode('photo')">
                     📷 Foto
@@ -439,6 +518,10 @@
                     <div class="coordinate-info" id="coordinateDisplay">Lat: -6.2088, Lng: 106.8456</div>
                 </div>
             </div>
+            
+            <div id="progressContainer" class="progress-container hidden">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
         </div>
         
         <div class="controls">
@@ -459,6 +542,26 @@
                     <input type="text" id="address" placeholder="Jl. Merdeka No. 123, Jakarta Pusat">
                 </div>
                 
+                <div class="time-controls">
+                    <h4>🕐 Waktu Watermark</h4>
+                    <div class="time-inputs">
+                        <div class="input-group">
+                            <label for="customDate">Tanggal</label>
+                            <input type="date" id="customDate" value="">
+                        </div>
+                        <div class="input-group">
+                            <label for="customTime">Waktu</label>
+                            <input type="time" id="customTime" value="12:00">
+                        </div>
+                    </div>
+                    <div class="time-options">
+                        <button class="time-btn active" onclick="setTimeOption('now')">Waktu Sekarang</button>
+                        <button class="time-btn" onclick="setTimeOption('yesterday')">Kemarin</button>
+                        <button class="time-btn" onclick="setTimeOption('tomorrow')">Besok</button>
+                        <button class="time-btn" onclick="setTimeOption('custom')">Custom</button>
+                    </div>
+                </div>
+                
                 <div class="coord-manipulation">
                     <h4>🔄 Rekayasa Koordinat</h4>
                     <div class="manipulation-controls">
@@ -467,6 +570,7 @@
                             <option value="randomize">Acak sedikit (±0.001)</option>
                             <option value="offset">Geser koordinat</option>
                             <option value="swap">Tukar Lat/Lng</option>
+                            <option value="fake">Koordinat acak di Indonesia</option>
                         </select>
                         <input type="number" id="offsetValue" placeholder="Offset (derajat)" step="0.0001" value="0.001">
                     </div>
@@ -474,14 +578,23 @@
             </div>
             
             <div class="video-controls" id="videoControls" style="display: none;">
-                <div class="input-group">
-                    <label for="videoDuration">Durasi Video (detik)</label>
-                    <input type="number" id="videoDuration" min="1" max="60" value="10">
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="videoDuration">Durasi Video (detik)</label>
+                        <input type="number" id="videoDuration" min="1" max="120" value="10">
+                    </div>
+                    <div class="input-group">
+                        <label for="videoFormat">Format Video</label>
+                        <select id="videoFormat">
+                            <option value="mp4">MP4 (Rekomendasi)</option>
+                            <option value="webm">WEBM</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="input-group">
                     <label for="videoQuality">Kualitas Video</label>
                     <select id="videoQuality">
-                        <option value="low">Rendah (240p)</option>
+                        <option value="low">Rendah (360p)</option>
                         <option value="medium" selected>Sedang (480p)</option>
                         <option value="high">Tinggi (720p)</option>
                     </select>
@@ -505,13 +618,16 @@
             </button>
             
             <button class="btn-download" onclick="downloadMedia()" id="downloadBtn" disabled>
-                ⬇️ Download Media
+                ⬇️ Download Media (MP4)
             </button>
             
             <div id="statusMessage" class="status-message hidden"></div>
         </div>
     </div>
 
+    <!-- Library untuk encode MP4 -->
+    <script src="https://unpkg.com/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
+    
     <input type="file" id="photoInput" class="hidden" accept="image/*" capture="environment">
     <input type="file" id="videoInput" class="hidden" accept="video/*">
     
@@ -524,6 +640,7 @@
         let recordingTimer = null;
         let recordingStartTime = null;
         let stream = null;
+        let currentTimeOption = 'now';
         
         // Data untuk menyimpan media dan lokasi
         let mediaData = {
@@ -531,14 +648,15 @@
             watermarkedDataUrl: '',
             location: null,
             hasGeotag: false,
-            type: 'photo', // 'photo' or 'video'
-            videoBlob: null
+            type: 'photo',
+            videoBlob: null,
+            customDateTime: new Date() // Default waktu sekarang
         };
 
         // Format tanggal Indonesia
         function formatIndonesianDate(date) {
             const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             
             const dayName = days[date.getDay()];
             const day = date.getDate();
@@ -550,6 +668,80 @@
             const seconds = date.getSeconds().toString().padStart(2, '0');
             
             return `${dayName}, ${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+        }
+
+        // Format tanggal untuk input date
+        function formatDateForInput(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // Format waktu untuk input time
+        function formatTimeForInput(date) {
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        // Fungsi untuk mendapatkan waktu custom
+        function getCustomDateTime() {
+            const dateInput = document.getElementById('customDate').value;
+            const timeInput = document.getElementById('customTime').value;
+            
+            if (dateInput && timeInput) {
+                // Gabungkan tanggal dan waktu
+                const dateTimeStr = `${dateInput}T${timeInput}`;
+                return new Date(dateTimeStr);
+            } else if (dateInput) {
+                // Hanya tanggal, gunakan waktu default 12:00
+                const dateTimeStr = `${dateInput}T12:00`;
+                return new Date(dateTimeStr);
+            } else {
+                // Kembalikan waktu sekarang
+                return new Date();
+            }
+        }
+
+        // Fungsi untuk set waktu option
+        function setTimeOption(option) {
+            currentTimeOption = option;
+            
+            // Update tombol aktif
+            document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const now = new Date();
+            
+            switch(option) {
+                case 'now':
+                    // Waktu sekarang
+                    mediaData.customDateTime = new Date();
+                    document.getElementById('customDate').value = formatDateForInput(now);
+                    document.getElementById('customTime').value = formatTimeForInput(now);
+                    break;
+                    
+                case 'yesterday':
+                    // Kemarin
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    mediaData.customDateTime = yesterday;
+                    document.getElementById('customDate').value = formatDateForInput(yesterday);
+                    document.getElementById('customTime').value = formatTimeForInput(yesterday);
+                    break;
+                    
+                case 'tomorrow':
+                    // Besok
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    mediaData.customDateTime = tomorrow;
+                    document.getElementById('customDate').value = formatDateForInput(tomorrow);
+                    document.getElementById('customTime').value = formatTimeForInput(tomorrow);
+                    break;
+                    
+                case 'custom':
+                    // Biarkan input custom
+                    mediaData.customDateTime = getCustomDateTime();
+                    break;
+            }
+            
+            updateWatermark();
         }
 
         // Fungsi untuk switch mode
@@ -573,12 +765,14 @@
                 captureBtn.innerHTML = '📷 Ambil Foto';
                 document.getElementById('modeIcon').textContent = '📷';
                 document.getElementById('modeText').textContent = 'Klik tombol Ambil Foto untuk memulai';
+                document.getElementById('downloadBtn').innerHTML = '⬇️ Download Foto (JPG)';
             } else {
                 captureBtn.classList.add('hidden');
                 recordBtn.classList.remove('hidden');
-                videoControls.style.display = 'flex';
+                videoControls.style.display = 'block';
                 document.getElementById('modeIcon').textContent = '🎥';
                 document.getElementById('modeText').textContent = 'Klik tombol Mulai Rekam untuk memulai';
+                document.getElementById('downloadBtn').innerHTML = '⬇️ Download Video (MP4)';
             }
             
             // Reset preview jika ada
@@ -601,17 +795,40 @@
             }
         }
 
+        // Fungsi untuk mendapatkan resolusi video berdasarkan kualitas
+        function getVideoResolution(quality) {
+            switch(quality) {
+                case 'high':
+                    return { width: 1280, height: 720 };
+                case 'medium':
+                    return { width: 854, height: 480 };
+                case 'low':
+                    return { width: 640, height: 360 };
+                default:
+                    return { width: 854, height: 480 };
+            }
+        }
+
         // Fungsi untuk memulai rekaman
         async function startRecording() {
             try {
-                // Minta akses kamera
-                stream = await navigator.mediaDevices.getUserMedia({ 
+                // Dapatkan format video yang dipilih
+                const videoFormat = document.getElementById('videoFormat').value;
+                const quality = document.getElementById('videoQuality').value;
+                const resolution = getVideoResolution(quality);
+                
+                // Konfigurasi untuk video
+                const constraints = {
                     video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }, 
-                    audio: true 
-                });
+                        width: { ideal: resolution.width },
+                        height: { ideal: resolution.height },
+                        frameRate: { ideal: 30, max: 30 }
+                    },
+                    audio: true
+                };
+                
+                // Minta akses kamera
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
                 
                 // Tampilkan preview video
                 const previewVideo = document.getElementById('previewVideo');
@@ -623,33 +840,42 @@
                 // Sembunyikan placeholder
                 document.getElementById('cameraPlaceholder').classList.add('hidden');
                 
-                // Setup MediaRecorder
+                // Setup MediaRecorder dengan format yang dipilih
                 recordedChunks = [];
-                const quality = document.getElementById('videoQuality').value;
-                let mimeType = 'video/webm;codecs=vp9';
+                const mimeType = videoFormat === 'mp4' 
+                    ? 'video/mp4;codecs="avc1.42E01E,mp4a.40.2"' 
+                    : 'video/webm;codecs="vp9,opus"';
                 
+                // Cek apakah format didukung
                 if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    mimeType = 'video/webm;codecs=vp8';
-                }
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    mimeType = 'video/webm';
-                }
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    mimeType = 'video/mp4';
+                    // Fallback ke webm jika mp4 tidak didukung
+                    showStatus('⚠️ Format MP4 tidak didukung, menggunakan WEBM sebagai alternatif', 'warning');
+                    const fallbackMimeType = 'video/webm;codecs="vp8,opus"';
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: fallbackMimeType });
+                } else {
+                    mediaRecorder = new MediaRecorder(stream, { mimeType });
                 }
                 
-                mediaRecorder = new MediaRecorder(stream, { mimeType });
-                
+                // Setup event handlers untuk MediaRecorder
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         recordedChunks.push(event.data);
+                        
+                        // Update progress bar
+                        const duration = parseInt(document.getElementById('videoDuration').value);
+                        const progress = Math.min((recordedChunks.length / (duration * 10)) * 100, 100);
+                        document.getElementById('progressBar').style.width = `${progress}%`;
                     }
                 };
                 
                 mediaRecorder.onstop = () => {
-                    const videoBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+                    const videoBlob = new Blob(recordedChunks, { 
+                        type: mediaRecorder.mimeType 
+                    });
+                    
                     mediaData.videoBlob = videoBlob;
                     mediaData.type = 'video';
+                    mediaData.videoFormat = videoFormat;
                     
                     // Tampilkan video yang sudah direkam
                     previewVideo.srcObject = null;
@@ -669,7 +895,7 @@
                 
                 // Mulai recording
                 const duration = parseInt(document.getElementById('videoDuration').value) * 1000;
-                mediaRecorder.start();
+                mediaRecorder.start(100); // Ambil data setiap 100ms untuk progress bar
                 isRecording = true;
                 
                 // Update UI
@@ -677,6 +903,7 @@
                 document.getElementById('recordBtn').classList.add('recording');
                 document.getElementById('recordingIndicator').classList.remove('hidden');
                 document.getElementById('videoTime').classList.remove('hidden');
+                document.getElementById('progressContainer').classList.remove('hidden');
                 
                 // Timer untuk durasi
                 recordingStartTime = Date.now();
@@ -727,6 +954,8 @@
                 document.getElementById('recordBtn').classList.remove('recording');
                 document.getElementById('recordingIndicator').classList.add('hidden');
                 document.getElementById('videoTime').classList.add('hidden');
+                document.getElementById('progressContainer').classList.add('hidden');
+                document.getElementById('progressBar').style.width = '0%';
                 
                 clearTimeout(recordingTimer);
             }
@@ -759,7 +988,10 @@
                 mediaData.hasGeotag = false;
                 mediaData.type = 'photo';
                 
-                // Tampilkan watermark dengan data default
+                // Update waktu custom
+                mediaData.customDateTime = getCustomDateTime();
+                
+                // Tampilkan watermark dengan data
                 updateWatermark();
                 document.getElementById('watermarkOverlay').classList.remove('hidden');
                 
@@ -777,9 +1009,9 @@
             const file = input.files[0];
             if (!file) return;
 
-            // Validasi ukuran file (max 50MB untuk video)
-            if (file.size > 50 * 1024 * 1024) {
-                showStatus('❌ Ukuran file terlalu besar! Maksimal 50MB.', 'error');
+            // Validasi ukuran file (max 100MB untuk video)
+            if (file.size > 100 * 1024 * 1024) {
+                showStatus('❌ Ukuran file terlalu besar! Maksimal 100MB.', 'error');
                 return;
             }
 
@@ -802,6 +1034,10 @@
             // Simpan video
             mediaData.videoBlob = file;
             mediaData.type = 'video';
+            mediaData.videoFormat = file.type.includes('mp4') ? 'mp4' : 'webm';
+            
+            // Update waktu custom
+            mediaData.customDateTime = getCustomDateTime();
             
             // Tampilkan watermark
             updateWatermark();
@@ -822,7 +1058,9 @@
             let newLng = parseFloat(lng);
             
             if (isNaN(newLat) || isNaN(newLng)) {
-                return { lat: lat, lng: lng };
+                // Jika koordinat tidak valid, beri nilai default
+                newLat = -6.2088;
+                newLng = 106.8456;
             }
             
             switch(operation) {
@@ -843,11 +1081,21 @@
                     [newLat, newLng] = [newLng, newLat];
                     break;
                     
+                case 'fake':
+                    // Koordinat acak di Indonesia
+                    newLat = -6.2 + (Math.random() - 0.5) * 10;
+                    newLng = 106.8 + (Math.random() - 0.5) * 10;
+                    break;
+                    
                 case 'none':
                 default:
                     // Tidak ada perubahan
                     break;
             }
+            
+            // Batasi koordinat ke wilayah Indonesia (sekitar)
+            newLat = Math.max(-11, Math.min(6, newLat));
+            newLng = Math.max(95, Math.min(141, newLng));
             
             // Format ke 6 desimal
             return {
@@ -862,9 +1110,15 @@
             const addressDisplay = document.getElementById('addressDisplay');
             const coordinateDisplay = document.getElementById('coordinateDisplay');
             
-            // Update timestamp
-            const now = new Date();
-            timestampDisplay.textContent = formatIndonesianDate(now);
+            // Update timestamp berdasarkan pilihan waktu
+            let displayDate;
+            if (currentTimeOption === 'custom') {
+                displayDate = getCustomDateTime();
+            } else {
+                displayDate = mediaData.customDateTime;
+            }
+            
+            timestampDisplay.textContent = formatIndonesianDate(displayDate);
             
             // Ambil data dari form
             let latitude = document.getElementById('latitude').value.trim();
@@ -898,7 +1152,7 @@
                     lat: parseFloat(latitude),
                     lng: parseFloat(longitude),
                     address: address,
-                    timestamp: now.toISOString(),
+                    timestamp: displayDate.toISOString(),
                     manipulated: document.getElementById('coordOperation').value !== 'none'
                 };
                 mediaData.hasGeotag = true;
@@ -929,6 +1183,7 @@
                 }
             } catch (error) {
                 showStatus('❌ Error mendownload media: ' + error.message, 'error');
+                console.error(error);
             }
         }
 
@@ -951,7 +1206,7 @@
                 const latitude = document.getElementById('latitude').value.trim() || '-6.2088';
                 const longitude = document.getElementById('longitude').value.trim() || '106.8456';
                 const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
-                const now = new Date();
+                const displayDate = getCustomDateTime();
                 
                 // Hitung ukuran watermark berdasarkan tinggi foto
                 const scaleFactor = canvas.height / 800;
@@ -960,12 +1215,13 @@
                 
                 // Background watermark
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.fillRect(0, canvas.height - padding * 3 - fontSize * 3, canvas.width, padding * 3 + fontSize * 3);
+                const watermarkHeight = padding * 3 + fontSize * 3;
+                ctx.fillRect(0, canvas.height - watermarkHeight, canvas.width, watermarkHeight);
                 
                 // Teks timestamp
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.fillStyle = 'white';
-                ctx.fillText(formatIndonesianDate(now), padding, canvas.height - padding * 2 - fontSize * 2);
+                ctx.fillText(formatIndonesianDate(displayDate), padding, canvas.height - padding * 2 - fontSize * 2);
                 
                 // Teks alamat
                 ctx.font = `${fontSize}px Arial`;
@@ -997,33 +1253,81 @@
             img.src = mediaData.originalDataUrl;
         }
 
+        // Fungsi untuk konversi WebM ke MP4 (menggunakan library MP4Box)
+        async function convertWebMToMP4(webmBlob) {
+            return new Promise((resolve, reject) => {
+                try {
+                    // Untuk demo, kita akan return blob asli karena konversi MP4 di browser kompleks
+                    // Dalam implementasi nyata, gunakan service worker atau server-side conversion
+                    showStatus('⚠️ Konversi ke MP4 memerlukan server. Menggunakan format asli.', 'warning');
+                    resolve(webmBlob);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
         // Fungsi untuk download video dengan watermark
         async function downloadVideoWithWatermark() {
             showStatus('⏳ Sedang memproses video dengan watermark...', 'info');
             
-            // Untuk video, kita akan membuat video baru dengan watermark
-            // Ini adalah implementasi sederhana menggunakan canvas untuk setiap frame
-            // Catatan: Ini mungkin berat untuk video panjang
+            // Cek apakah video sudah dalam format MP4
+            const videoFormat = mediaData.videoFormat || 'webm';
+            let videoBlob = mediaData.videoBlob;
             
+            // Jika format webm dan ingin MP4, coba konversi
+            if (videoFormat === 'webm' && document.getElementById('videoFormat').value === 'mp4') {
+                showStatus('⏳ Mengonversi WebM ke MP4...', 'info');
+                try {
+                    videoBlob = await convertWebMToMP4(videoBlob);
+                } catch (error) {
+                    showStatus('⚠️ Gagal konversi ke MP4, menggunakan format WebM', 'warning');
+                }
+            }
+            
+            // Untuk video, kita akan membuat video baru dengan watermark menggunakan canvas
             const video = document.getElementById('previewVideo');
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
+            
+            // Tunggu video siap
+            await new Promise(resolve => {
+                if (video.readyState >= 2) {
+                    resolve();
+                } else {
+                    video.addEventListener('loadedmetadata', resolve);
+                }
+            });
             
             // Set canvas size sesuai video
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 480;
             
-            // Buat video element baru
-            const outputVideo = document.createElement('video');
-            const mediaStream = canvas.captureStream(30); // 30 fps
-            const recorder = new MediaRecorder(mediaStream);
+            // Buat video element baru untuk output
+            const outputStream = canvas.captureStream(30); // 30 fps
+            const mimeType = videoFormat === 'mp4' 
+                ? 'video/mp4;codecs="avc1.42E01E,mp4a.40.2"' 
+                : 'video/webm;codecs="vp9,opus"';
+            
+            // Cek apakah format didukung
+            let recorder;
+            if (MediaRecorder.isTypeSupported(mimeType)) {
+                recorder = new MediaRecorder(outputStream, { mimeType });
+            } else {
+                // Fallback ke webm
+                recorder = new MediaRecorder(outputStream, { mimeType: 'video/webm;codecs="vp8,opus"' });
+            }
+            
             const chunks = [];
             
             recorder.ondataavailable = (e) => chunks.push(e.data);
-            recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
+            recorder.onstop = async () => {
+                const blob = new Blob(chunks, { type: recorder.mimeType });
+                
+                // Tentukan nama file berdasarkan format
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const fileName = `geotag-video-${timestamp}.webm`;
+                const format = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+                const fileName = `geotag-video-${timestamp}.${format}`;
                 
                 // Download video
                 const url = URL.createObjectURL(blob);
@@ -1035,7 +1339,7 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 
-                showStatus('✅ Video berhasil didownload dengan watermark!', 'success');
+                showStatus(`✅ Video berhasil didownload dengan watermark (${format.toUpperCase()})!`, 'success');
             };
             
             // Mulai rekaman canvas
@@ -1048,39 +1352,52 @@
                     return;
                 }
                 
-                // Draw video frame
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Tambahkan watermark
-                const latitude = document.getElementById('latitude').value.trim() || '-6.2088';
-                const longitude = document.getElementById('longitude').value.trim() || '106.8456';
-                const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
-                
-                // Hitung ukuran watermark
-                const scaleFactor = canvas.height / 800;
-                const fontSize = Math.max(14, 16 * scaleFactor);
-                const padding = Math.max(10, 15 * scaleFactor);
-                
-                // Background watermark
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.fillRect(0, canvas.height - padding * 3 - fontSize * 3, canvas.width, padding * 3 + fontSize * 3);
-                
-                // Teks timestamp
-                ctx.font = `bold ${fontSize}px Arial`;
-                ctx.fillStyle = 'white';
-                const now = new Date(video.currentTime * 1000 + recordingStartTime);
-                ctx.fillText(formatIndonesianDate(now), padding, canvas.height - padding * 2 - fontSize * 2);
-                
-                // Teks alamat
-                ctx.font = `${fontSize}px Arial`;
-                ctx.fillText(address, padding, canvas.height - padding - fontSize);
-                
-                // Teks koordinat
-                ctx.font = `${fontSize}px monospace`;
-                ctx.fillText(`Lat: ${latitude}, Lng: ${longitude}`, padding, canvas.height - padding);
-                
-                // Request frame berikutnya
-                requestAnimationFrame(drawFrame);
+                try {
+                    // Draw video frame
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Tambahkan watermark
+                    const latitude = document.getElementById('latitude').value.trim() || '-6.2088';
+                    const longitude = document.getElementById('longitude').value.trim() || '106.8456';
+                    const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
+                    
+                    // Hitung waktu berdasarkan waktu custom + durasi video
+                    let displayDate;
+                    if (currentTimeOption === 'custom') {
+                        displayDate = new Date(getCustomDateTime().getTime() + (video.currentTime * 1000));
+                    } else {
+                        displayDate = new Date(mediaData.customDateTime.getTime() + (video.currentTime * 1000));
+                    }
+                    
+                    // Hitung ukuran watermark
+                    const scaleFactor = canvas.height / 800;
+                    const fontSize = Math.max(14, 16 * scaleFactor);
+                    const padding = Math.max(10, 15 * scaleFactor);
+                    const watermarkHeight = padding * 3 + fontSize * 3;
+                    
+                    // Background watermark
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(0, canvas.height - watermarkHeight, canvas.width, watermarkHeight);
+                    
+                    // Teks timestamp
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(formatIndonesianDate(displayDate), padding, canvas.height - padding * 2 - fontSize * 2);
+                    
+                    // Teks alamat
+                    ctx.font = `${fontSize}px Arial`;
+                    ctx.fillText(address, padding, canvas.height - padding - fontSize);
+                    
+                    // Teks koordinat
+                    ctx.font = `${fontSize}px monospace`;
+                    ctx.fillText(`Lat: ${latitude}, Lng: ${longitude}`, padding, canvas.height - padding);
+                    
+                    // Request frame berikutnya
+                    requestAnimationFrame(drawFrame);
+                } catch (error) {
+                    console.error('Error drawing frame:', error);
+                    recorder.stop();
+                }
             }
             
             // Mulai menggambar
@@ -1090,8 +1407,19 @@
             
             // Stop setelah video selesai
             video.onended = () => {
-                recorder.stop();
+                setTimeout(() => {
+                    if (recorder.state === 'recording') {
+                        recorder.stop();
+                    }
+                }, 500);
             };
+            
+            // Safety timeout
+            setTimeout(() => {
+                if (recorder.state === 'recording') {
+                    recorder.stop();
+                }
+            }, 300000); // 5 menit timeout
         }
 
         // Fungsi untuk reset preview
@@ -1110,6 +1438,8 @@
             document.getElementById('cameraPlaceholder').classList.remove('hidden');
             document.getElementById('recordingIndicator').classList.add('hidden');
             document.getElementById('videoTime').classList.add('hidden');
+            document.getElementById('progressContainer').classList.add('hidden');
+            document.getElementById('progressBar').style.width = '0%';
             
             // Nonaktifkan tombol download
             document.getElementById('downloadBtn').disabled = true;
@@ -1125,6 +1455,9 @@
                 document.getElementById('coordOperation').value = 'none';
                 document.getElementById('offsetValue').value = '0.001';
                 
+                // Reset waktu ke sekarang
+                setTimeOption('now');
+                
                 // Reset preview
                 resetPreview();
                 
@@ -1135,7 +1468,8 @@
                     location: null,
                     hasGeotag: false,
                     type: 'photo',
-                    videoBlob: null
+                    videoBlob: null,
+                    customDateTime: new Date()
                 };
                 
                 showStatus('🔄 Semua data telah direset!', 'info');
@@ -1152,12 +1486,17 @@
             statusElement.className = `status-message ${type}`;
             statusElement.classList.remove('hidden');
             
-            // Auto hide setelah 5 detik untuk pesan info
-            if (type === 'info') {
-                setTimeout(() => {
+            // Auto hide setelah beberapa detik
+            let hideTime = 5000;
+            if (type === 'info') hideTime = 5000;
+            if (type === 'success') hideTime = 3000;
+            if (type === 'warning') hideTime = 7000;
+            
+            setTimeout(() => {
+                if (statusElement.textContent === message) {
                     statusElement.classList.add('hidden');
-                }, 5000);
-            }
+                }
+            }, hideTime);
         }
 
         // Event listener untuk input file
@@ -1175,9 +1514,21 @@
         document.getElementById('address').addEventListener('input', updateWatermark);
         document.getElementById('coordOperation').addEventListener('change', updateWatermark);
         document.getElementById('offsetValue').addEventListener('input', updateWatermark);
+        document.getElementById('customDate').addEventListener('change', function() {
+            setTimeOption('custom');
+        });
+        document.getElementById('customTime').addEventListener('change', function() {
+            setTimeOption('custom');
+        });
 
-        // Inisialisasi watermark dengan data default
+        // Inisialisasi
         document.addEventListener('DOMContentLoaded', function() {
+            // Set waktu default ke sekarang
+            const now = new Date();
+            document.getElementById('customDate').value = formatDateForInput(now);
+            document.getElementById('customTime').value = formatTimeForInput(now);
+            mediaData.customDateTime = now;
+            
             updateWatermark();
         });
     </script>
