@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geotag Camera & Video - Timestamp Camera Style</title>
+    <title>Geotag Camera & Video - Custom Time Watermark</title>
     <style>
         * {
             margin: 0;
@@ -204,6 +204,55 @@
             outline: none;
         }
         
+        .time-control {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .time-control h4 {
+            color: #856404;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .time-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .time-btn {
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .time-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .time-btn.active {
+            background: #4a69bd;
+            color: white;
+            border-color: #4a69bd;
+        }
+        
         .coord-manipulation {
             background: #e3f2fd;
             padding: 15px;
@@ -377,7 +426,7 @@
                 height: 300px;
             }
             
-            .input-row, .manipulation-controls {
+            .input-row, .manipulation-controls, .time-inputs {
                 grid-template-columns: 1fr;
             }
             
@@ -459,6 +508,26 @@
                     <input type="text" id="address" placeholder="Jl. Merdeka No. 123, Jakarta Pusat">
                 </div>
                 
+                <div class="time-control">
+                    <h4>🕐 Waktu Watermark</h4>
+                    <div class="time-inputs">
+                        <div class="input-group">
+                            <label for="customDate">Tanggal</label>
+                            <input type="date" id="customDate">
+                        </div>
+                        <div class="input-group">
+                            <label for="customTime">Waktu</label>
+                            <input type="time" id="customTime" value="12:00">
+                        </div>
+                    </div>
+                    <div class="time-options">
+                        <button class="time-btn active" onclick="setTimeNow()">Waktu Sekarang</button>
+                        <button class="time-btn" onclick="setTimeYesterday()">Kemarin</button>
+                        <button class="time-btn" onclick="setTimeTomorrow()">Besok</button>
+                        <button class="time-btn" onclick="setCustomTime()">Custom</button>
+                    </div>
+                </div>
+                
                 <div class="coord-manipulation">
                     <h4>🔄 Rekayasa Koordinat</h4>
                     <div class="manipulation-controls">
@@ -524,21 +593,12 @@
         let recordingTimer = null;
         let recordingStartTime = null;
         let stream = null;
-        
-        // Data untuk menyimpan media dan lokasi
-        let mediaData = {
-            originalDataUrl: '',
-            watermarkedDataUrl: '',
-            location: null,
-            hasGeotag: false,
-            type: 'photo', // 'photo' or 'video'
-            videoBlob: null
-        };
+        let customDateTime = new Date(); // Untuk menyimpan waktu custom
 
         // Format tanggal Indonesia
         function formatIndonesianDate(date) {
             const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             
             const dayName = days[date.getDay()];
             const day = date.getDate();
@@ -550,6 +610,90 @@
             const seconds = date.getSeconds().toString().padStart(2, '0');
             
             return `${dayName}, ${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+        }
+
+        // Format tanggal untuk input date
+        function formatDateForInput(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // Format waktu untuk input time
+        function formatTimeForInput(date) {
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        // Fungsi untuk mendapatkan waktu custom dari input
+        function getCustomDateTime() {
+            const dateInput = document.getElementById('customDate').value;
+            const timeInput = document.getElementById('customTime').value;
+            
+            if (dateInput && timeInput) {
+                // Gabungkan tanggal dan waktu
+                const dateTimeStr = `${dateInput}T${timeInput}`;
+                return new Date(dateTimeStr);
+            } else if (dateInput) {
+                // Hanya tanggal, gunakan waktu default 12:00
+                const dateTimeStr = `${dateInput}T12:00`;
+                return new Date(dateTimeStr);
+            } else {
+                // Kembalikan waktu sekarang
+                return new Date();
+            }
+        }
+
+        // Fungsi untuk set waktu ke sekarang
+        function setTimeNow() {
+            const now = new Date();
+            customDateTime = now;
+            document.getElementById('customDate').value = formatDateForInput(now);
+            document.getElementById('customTime').value = formatTimeForInput(now);
+            updateWatermark();
+            updateTimeButtons('now');
+        }
+
+        // Fungsi untuk set waktu ke kemarin
+        function setTimeYesterday() {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            customDateTime = yesterday;
+            document.getElementById('customDate').value = formatDateForInput(yesterday);
+            document.getElementById('customTime').value = formatTimeForInput(yesterday);
+            updateWatermark();
+            updateTimeButtons('yesterday');
+        }
+
+        // Fungsi untuk set waktu ke besok
+        function setTimeTomorrow() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            customDateTime = tomorrow;
+            document.getElementById('customDate').value = formatDateForInput(tomorrow);
+            document.getElementById('customTime').value = formatTimeForInput(tomorrow);
+            updateWatermark();
+            updateTimeButtons('tomorrow');
+        }
+
+        // Fungsi untuk set waktu custom
+        function setCustomTime() {
+            customDateTime = getCustomDateTime();
+            updateWatermark();
+            updateTimeButtons('custom');
+        }
+
+        // Fungsi untuk update tombol waktu aktif
+        function updateTimeButtons(activeBtn) {
+            const buttons = document.querySelectorAll('.time-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            if (activeBtn === 'now') {
+                document.querySelector('.time-btn:nth-child(1)').classList.add('active');
+            } else if (activeBtn === 'yesterday') {
+                document.querySelector('.time-btn:nth-child(2)').classList.add('active');
+            } else if (activeBtn === 'tomorrow') {
+                document.querySelector('.time-btn:nth-child(3)').classList.add('active');
+            } else {
+                document.querySelector('.time-btn:nth-child(4)').classList.add('active');
+            }
         }
 
         // Fungsi untuk switch mode
@@ -813,6 +957,16 @@
             showStatus('✅ Video berhasil diupload. Isi data lokasi untuk memperbarui watermark.', 'info');
         }
 
+        // Data untuk menyimpan media dan lokasi
+        let mediaData = {
+            originalDataUrl: '',
+            watermarkedDataUrl: '',
+            location: null,
+            hasGeotag: false,
+            type: 'photo',
+            videoBlob: null
+        };
+
         // Fungsi untuk rekayasa koordinat
         function manipulateCoordinates(lat, lng) {
             const operation = document.getElementById('coordOperation').value;
@@ -862,9 +1016,8 @@
             const addressDisplay = document.getElementById('addressDisplay');
             const coordinateDisplay = document.getElementById('coordinateDisplay');
             
-            // Update timestamp
-            const now = new Date();
-            timestampDisplay.textContent = formatIndonesianDate(now);
+            // Update timestamp dengan waktu custom
+            timestampDisplay.textContent = formatIndonesianDate(customDateTime);
             
             // Ambil data dari form
             let latitude = document.getElementById('latitude').value.trim();
@@ -898,7 +1051,7 @@
                     lat: parseFloat(latitude),
                     lng: parseFloat(longitude),
                     address: address,
-                    timestamp: now.toISOString(),
+                    timestamp: customDateTime.toISOString(),
                     manipulated: document.getElementById('coordOperation').value !== 'none'
                 };
                 mediaData.hasGeotag = true;
@@ -947,11 +1100,10 @@
                 // Draw foto asli
                 ctx.drawImage(img, 0, 0);
                 
-                // Tambahkan watermark
+                // Tambahkan watermark dengan waktu custom
                 const latitude = document.getElementById('latitude').value.trim() || '-6.2088';
                 const longitude = document.getElementById('longitude').value.trim() || '106.8456';
                 const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
-                const now = new Date();
                 
                 // Hitung ukuran watermark berdasarkan tinggi foto
                 const scaleFactor = canvas.height / 800;
@@ -962,10 +1114,10 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(0, canvas.height - padding * 3 - fontSize * 3, canvas.width, padding * 3 + fontSize * 3);
                 
-                // Teks timestamp
+                // Teks timestamp dengan waktu custom
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.fillStyle = 'white';
-                ctx.fillText(formatIndonesianDate(now), padding, canvas.height - padding * 2 - fontSize * 2);
+                ctx.fillText(formatIndonesianDate(customDateTime), padding, canvas.height - padding * 2 - fontSize * 2);
                 
                 // Teks alamat
                 ctx.font = `${fontSize}px Arial`;
@@ -1000,10 +1152,6 @@
         // Fungsi untuk download video dengan watermark
         async function downloadVideoWithWatermark() {
             showStatus('⏳ Sedang memproses video dengan watermark...', 'info');
-            
-            // Untuk video, kita akan membuat video baru dengan watermark
-            // Ini adalah implementasi sederhana menggunakan canvas untuk setiap frame
-            // Catatan: Ini mungkin berat untuk video panjang
             
             const video = document.getElementById('previewVideo');
             const canvas = document.createElement('canvas');
@@ -1051,7 +1199,7 @@
                 // Draw video frame
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // Tambahkan watermark
+                // Tambahkan watermark dengan waktu custom
                 const latitude = document.getElementById('latitude').value.trim() || '-6.2088';
                 const longitude = document.getElementById('longitude').value.trim() || '106.8456';
                 const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
@@ -1065,11 +1213,12 @@
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(0, canvas.height - padding * 3 - fontSize * 3, canvas.width, padding * 3 + fontSize * 3);
                 
-                // Teks timestamp
+                // Teks timestamp dengan waktu custom
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.fillStyle = 'white';
-                const now = new Date(video.currentTime * 1000 + recordingStartTime);
-                ctx.fillText(formatIndonesianDate(now), padding, canvas.height - padding * 2 - fontSize * 2);
+                // Untuk video, kita bisa menggunakan waktu custom atau waktu real-time
+                // Di sini kita gunakan waktu custom yang tetap
+                ctx.fillText(formatIndonesianDate(customDateTime), padding, canvas.height - padding * 2 - fontSize * 2);
                 
                 // Teks alamat
                 ctx.font = `${fontSize}px Arial`;
@@ -1125,6 +1274,9 @@
                 document.getElementById('coordOperation').value = 'none';
                 document.getElementById('offsetValue').value = '0.001';
                 
+                // Reset waktu ke sekarang
+                setTimeNow();
+                
                 // Reset preview
                 resetPreview();
                 
@@ -1175,9 +1327,13 @@
         document.getElementById('address').addEventListener('input', updateWatermark);
         document.getElementById('coordOperation').addEventListener('change', updateWatermark);
         document.getElementById('offsetValue').addEventListener('input', updateWatermark);
+        document.getElementById('customDate').addEventListener('change', setCustomTime);
+        document.getElementById('customTime').addEventListener('change', setCustomTime);
 
         // Inisialisasi watermark dengan data default
         document.addEventListener('DOMContentLoaded', function() {
+            // Set waktu default ke sekarang
+            setTimeNow();
             updateWatermark();
         });
     </script>
