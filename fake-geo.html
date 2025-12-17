@@ -89,24 +89,26 @@
             background: #000;
         }
         
-        /* WATERMARK OUTPUT - Tampilan di gambar */
+        /* WATERMARK OUTPUT - REVISI: peta di kiri, teks di kanan, masing-masing mepet */
         .watermark-overlay {
             position: absolute;
-            width: 80%;
+            width: 90%;
             height: 25%; /* Seperempat dari tinggi gambar */
             bottom: 20px;
-            right: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 100;
             display: flex;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.85);
         }
         
-        .watermark-map {
+        .watermark-map-container {
             flex: 1;
             background: white;
-            border-right: 2px solid rgba(255, 255, 255, 0.3);
+            min-width: 0; /* Agar tidak overflow */
         }
         
         #watermarkMap {
@@ -114,47 +116,56 @@
             height: 100%;
         }
         
-        .watermark-text {
+        .watermark-text-container {
             flex: 1;
-            padding: 15px;
+            padding: 15px 20px;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            background: rgba(0, 0, 0, 0.7);
+            min-width: 0; /* Agar tidak overflow */
+        }
+        
+        .watermark-text {
+            color: white;
+            width: 100%;
         }
         
         .watermark-text p {
-            color: white;
             margin: 0;
             padding: 2px 0;
-            line-height: 1.2;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .date {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
             margin-bottom: 5px !important;
         }
         
         .coordinates {
             font-family: 'Courier New', monospace;
-            font-size: 13px;
+            font-size: 14px;
             margin-bottom: 8px !important;
+            color: #ffcc00;
         }
         
         .street {
-            font-size: 13px;
+            font-size: 14px;
             margin-bottom: 5px !important;
         }
         
         .district {
-            font-size: 13px;
+            font-size: 14px;
             margin-bottom: 5px !important;
         }
         
         .province {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
+            margin-bottom: 5px !important;
         }
         
         .camera-placeholder {
@@ -388,6 +399,11 @@
             font-size: 10px !important;
         }
         
+        /* Tambahan untuk memastikan peta muncul */
+        .leaflet-container {
+            background: #f8f8f8 !important;
+        }
+        
         @media (max-width: 900px) {
             .main-content {
                 flex-direction: column;
@@ -398,8 +414,18 @@
             }
             
             .watermark-overlay {
-                width: 90%;
+                width: 95%;
                 height: 30%;
+                flex-direction: column;
+            }
+            
+            .watermark-map-container, .watermark-text-container {
+                flex: none;
+                width: 100%;
+            }
+            
+            .watermark-map-container {
+                height: 120px;
             }
             
             .camera-container {
@@ -408,6 +434,10 @@
             
             .map-container {
                 height: 250px;
+            }
+            
+            .watermark-text p {
+                white-space: normal;
             }
         }
     </style>
@@ -483,17 +513,19 @@
                     </div>
                     <img id="previewImage" class="camera-preview hidden">
                     
-                    <!-- WATERMARK OUTPUT -->
+                    <!-- WATERMARK OUTPUT - REVISI LAYOUT -->
                     <div id="watermarkOverlay" class="watermark-overlay hidden">
-                        <div class="watermark-map">
+                        <div class="watermark-map-container">
                             <div id="watermarkMap"></div>
                         </div>
-                        <div class="watermark-text">
-                            <p class="date" id="dateDisplay">1 Januari 2024</p>
-                            <p class="coordinates" id="coordinateDisplay">-6.2088, 106.8456</p>
-                            <p class="street" id="streetDisplay">Jl. Merdeka No. 123</p>
-                            <p class="district" id="districtDisplay">Kec. Gambir, Jakarta Pusat</p>
-                            <p class="province" id="provinceDisplay">DKI Jakarta</p>
+                        <div class="watermark-text-container">
+                            <div class="watermark-text">
+                                <p class="date" id="dateDisplay">1 Januari 2024</p>
+                                <p class="coordinates" id="coordinateDisplay">-6.2088, 106.8456</p>
+                                <p class="street" id="streetDisplay">Jl. Merdeka No. 123</p>
+                                <p class="district" id="districtDisplay">Kec. Gambir, Jakarta Pusat</p>
+                                <p class="province" id="provinceDisplay">DKI Jakarta</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -585,6 +617,11 @@
         
         // Inisialisasi peta untuk watermark
         function initWatermarkMap() {
+            // Hapus peta lama jika ada
+            if (watermarkMap) {
+                watermarkMap.remove();
+            }
+            
             watermarkMap = L.map('watermarkMap', {
                 zoomControl: false,
                 dragging: false,
@@ -603,15 +640,27 @@
             
             // Tambahkan marker dengan ikon merah
             const redIcon = L.icon({
-                iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj48cGF0aCBmaWxsPSIjRkYzRjNCIiBkPSJNMTYgMEM5LjM3NCAwIDQgNS4zNzQgNCAxMnM1LjM3NCAxMiAxMiAxMiAxMi01LjM3NCAxMi0xMlMyMi42MjYgMCAxNiAwem0wIDIwYy00LjQxOCAwLTgtMy41ODItOC04czMuNTgyLTggOC04IDggMy41ODIgOCA4LTMuNTgyIDgtOCA4eiIvPjxwYXRoIGZpbGw9IiNFRjQyNDIiIGQ9Ik0xNiA0QzEwLjQ4NiA0IDYgOC40ODYgNiAxNHM0LjQ4NiAxMCAxMCAxMCAxMC00LjQ4NiAxMC0xMFMyMS41MTQgNCAxNiA0em0wIDE2Yy0zLjMxNCAwLTYtMi42ODYtNi02czIuNjg2LTYgNi02IDYgMi42ODYgNiA2LTIuNjg2IDYtNiA2eiIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTQiIHI9IjQiIGZpbGw9IiNGRkZGRkYiLz48L3N2Zz4=',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
+                iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+                        <circle cx="16" cy="16" r="12" fill="#e74c3c" stroke="#c0392b" stroke-width="2"/>
+                        <circle cx="16" cy="16" r="6" fill="#ffffff"/>
+                    </svg>
+                `),
+                iconSize: [24, 24],
+                iconAnchor: [12, 24],
+                popupAnchor: [0, -24]
             });
             
             watermarkMarker = L.marker([currentCoords.lat, currentCoords.lng], {icon: redIcon})
                 .addTo(watermarkMap)
                 .bindPopup('Lokasi foto');
+                
+            // Force map update
+            setTimeout(() => {
+                if (watermarkMap) {
+                    watermarkMap.invalidateSize();
+                }
+            }, 100);
         }
         
         // Update lokasi terpilih di peta pencarian
@@ -632,6 +681,11 @@
             
             // Update watermark display
             updateWatermarkDisplay();
+            
+            // Update peta watermark jika sudah ada
+            if (watermarkMap) {
+                updateWatermarkMap(lat, lng);
+            }
         }
         
         // Gunakan lokasi terpilih
@@ -761,18 +815,19 @@
                 // Simpan foto original
                 mediaData.originalDataUrl = e.target.result;
                 
-                // Inisialisasi peta watermark jika belum
-                if (!watermarkMap) {
-                    setTimeout(() => {
-                        initWatermarkMap();
-                        // Tampilkan watermark setelah peta siap
-                        setTimeout(() => {
-                            document.getElementById('watermarkOverlay').classList.remove('hidden');
-                        }, 100);
-                    }, 100);
-                } else {
+                // Inisialisasi peta watermark
+                setTimeout(() => {
+                    initWatermarkMap();
+                    // Tampilkan watermark setelah peta siap
                     document.getElementById('watermarkOverlay').classList.remove('hidden');
-                }
+                    
+                    // Force resize map
+                    setTimeout(() => {
+                        if (watermarkMap) {
+                            watermarkMap.invalidateSize();
+                        }
+                    }, 200);
+                }, 100);
                 
                 // Aktifkan tombol download
                 document.getElementById('downloadBtn').disabled = false;
@@ -836,68 +891,83 @@
         // Buat watermark di canvas (untuk output)
         function createWatermarkOnCanvas(ctx, imgWidth, imgHeight) {
             // Hitung ukuran watermark (seperempat dari tinggi gambar)
-            const watermarkHeight = imgHeight * 0.25;
+            const watermarkHeight = Math.max(120, imgHeight * 0.25);
             const watermarkWidth = watermarkHeight * 2.5; // Rasio 2.5:1
-            const watermarkX = imgWidth - watermarkWidth - 20;
+            const watermarkX = 20;
             const watermarkY = imgHeight - watermarkHeight - 20;
             
-            // Background peta (kanan)
-            const mapWidth = watermarkWidth / 2;
-            const mapX = watermarkX;
-            const mapY = watermarkY;
-            
-            // Gambar background peta (abu-abu terang)
-            ctx.fillStyle = '#f5f5f5';
+            // Background watermark (hitam semi-transparan)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
             ctx.beginPath();
-            ctx.roundRect(mapX, mapY, mapWidth, watermarkHeight, 5);
+            ctx.roundRect(watermarkX, watermarkY, watermarkWidth, watermarkHeight, 8);
             ctx.fill();
+            
+            // Border putih tipis
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Area peta (kiri) - 40% dari lebar watermark
+            const mapWidth = watermarkWidth * 0.4;
+            const mapX = watermarkX + 5;
+            const mapY = watermarkY + 5;
+            const mapHeight = watermarkHeight - 10;
+            
+            // Background peta (abu-abu terang)
+            ctx.fillStyle = '#f8f8f8';
+            ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
             
             // Border peta
             ctx.strokeStyle = '#ddd';
             ctx.lineWidth = 1;
-            ctx.stroke();
+            ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
             
             // Gambar marker di peta
             const markerX = mapX + mapWidth/2;
-            const markerY = mapY + watermarkHeight/2;
+            const markerY = mapY + mapHeight/2;
+            const markerSize = Math.min(mapWidth, mapHeight) * 0.15;
             
             // Outer marker (red)
             ctx.fillStyle = '#e74c3c';
             ctx.beginPath();
-            ctx.arc(markerX, markerY, watermarkHeight * 0.08, 0, Math.PI * 2);
+            ctx.arc(markerX, markerY, markerSize, 0, Math.PI * 2);
             ctx.fill();
             
             // Inner marker (white)
             ctx.fillStyle = 'white';
             ctx.beginPath();
-            ctx.arc(markerX, markerY, watermarkHeight * 0.04, 0, Math.PI * 2);
+            ctx.arc(markerX, markerY, markerSize/2, 0, Math.PI * 2);
             ctx.fill();
             
             // Teks "PETA" kecil di bawah
-            ctx.font = `bold ${watermarkHeight * 0.06}px Arial`;
+            ctx.font = `bold ${markerSize * 0.8}px Arial`;
             ctx.fillStyle = '#666';
             ctx.textAlign = 'center';
-            ctx.fillText('PETA', markerX, mapY + watermarkHeight - watermarkHeight * 0.08);
+            ctx.fillText('PETA', markerX, mapY + mapHeight - markerSize);
             
-            // Area teks (kiri)
-            const textX = mapX + mapWidth + 10;
-            const textY = watermarkY + watermarkHeight * 0.15;
-            const lineHeight = watermarkHeight * 0.18;
+            // Area teks (kanan) - 60% dari lebar watermark
+            const textX = mapX + mapWidth + 15;
+            const textY = mapY + 10;
+            const lineHeight = mapHeight / 5;
+            const fontSize = lineHeight * 0.6;
             
             // Teks tanggal
-            ctx.font = `bold ${watermarkHeight * 0.09}px Arial`;
+            ctx.font = `bold ${fontSize}px Arial`;
             ctx.fillStyle = 'white';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             ctx.fillText(formatIndonesianDate(new Date()), textX, textY);
             
             // Teks koordinat
-            ctx.font = `${watermarkHeight * 0.08}px "Courier New", monospace`;
-            ctx.fillText(`${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)}`, textX, textY + lineHeight);
+            ctx.font = `${fontSize * 0.9}px "Courier New", monospace`;
+            ctx.fillStyle = '#ffcc00'; // Warna kuning untuk koordinat
+            ctx.fillText(`${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)}`, 
+                        textX, textY + lineHeight);
             
             // Teks jalan
             const street = document.getElementById('street').value.trim() || 'Jl. Tidak Diketahui';
-            ctx.font = `${watermarkHeight * 0.08}px Arial`;
+            ctx.font = `${fontSize}px Arial`;
+            ctx.fillStyle = 'white';
             ctx.fillText(street, textX, textY + lineHeight * 2);
             
             // Teks kecamatan dan kota
@@ -917,8 +987,14 @@
             
             // Teks provinsi
             const province = document.getElementById('province').value.trim() || 'Provinsi tidak diketahui';
-            ctx.font = `bold ${watermarkHeight * 0.08}px Arial`;
+            ctx.font = `bold ${fontSize}px Arial`;
             ctx.fillText(province, textX, textY + lineHeight * 4);
+            
+            // Shadow effect
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 5;
         }
         
         // Reset semua
