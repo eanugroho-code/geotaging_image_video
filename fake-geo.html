@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geotag Camera - Waktu Berjalan & Koordinat Tetap</title>
+    <title>Geotag Camera - Watermark dengan Peta</title>
     <!-- Leaflet CSS untuk peta -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet Geocoder CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <style>
         * {
             margin: 0;
@@ -24,186 +26,171 @@
         }
         
         .container {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             border-radius: 20px;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
             width: 100%;
-            max-width: 800px;
+            max-width: 1000px;
             overflow: hidden;
         }
         
         .header {
             background: linear-gradient(135deg, #2c3e50, #4a69bd);
             color: white;
-            padding: 20px;
+            padding: 25px;
             text-align: center;
-            position: relative;
         }
         
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+            font-size: 28px;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 15px;
         }
         
         .header p {
-            font-size: 14px;
+            font-size: 16px;
             opacity: 0.9;
         }
         
-        .mode-selector {
+        .main-content {
             display: flex;
-            margin-top: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 5px;
+            min-height: 600px;
         }
         
-        .mode-btn {
+        .left-panel {
             flex: 1;
-            padding: 8px;
-            text-align: center;
-            background: transparent;
-            border: none;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
+            padding: 25px;
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
         }
         
-        .mode-btn.active {
-            background: rgba(255, 255, 255, 0.2);
-            font-weight: bold;
+        .right-panel {
+            flex: 1;
+            padding: 25px;
+            background: white;
+            display: flex;
+            flex-direction: column;
         }
         
         .camera-container {
             position: relative;
             background: #000;
-            height: 500px;
+            height: 400px;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #dee2e6;
         }
         
-        .camera-preview, .video-preview {
+        .camera-preview {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
         }
         
-        .recording-indicator {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: #e74c3c;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 0.7; }
-            50% { opacity: 1; }
-            100% { opacity: 0.7; }
-        }
-        
-        /* MODIFIKASI WATERMARK UNTUK FRONTEND (PREVIEW) */
+        /* WATERMARK OUTPUT - Tampilan di gambar */
         .watermark-overlay {
             position: absolute;
             width: 90%;
-            max-width: 550px;
-            bottom: 20px;
+            max-width: 700px;
+            bottom: 25px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 15px;
-            font-size: 14px;
-            line-height: 1.5;
-            z-index: 10;
-            border-radius: 12px;
+            z-index: 100;
             display: flex;
-            gap: 20px;
-            align-items: center;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6),
-                        0 0 0 1px rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(5px);
-        }
-        
-        .watermark-map-container {
-            width: 140px;
-            height: 140px;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 12px;
             overflow: hidden;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-            flex-shrink: 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
         }
         
-        #leafletMap {
-            width: 100%;
-            height: 100%;
-        }
-        
-        .watermark-info {
+        .watermark-text {
             flex: 1;
+            padding: 25px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            padding: 5px;
+            justify-content: center;
+            gap: 15px;
         }
         
-        .timestamp-info {
+        .watermark-text .timestamp {
+            font-size: 20px;
             font-weight: 700;
-            font-size: 18px;
             color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8),
-                         0 0 0 2px rgba(0, 0, 0, 0.3);
-            padding: 8px 12px;
-            border-radius: 8px;
-            background: linear-gradient(135deg, rgba(74, 105, 189, 0.4), rgba(52, 152, 219, 0.4));
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
             letter-spacing: 0.5px;
         }
         
-        .location-info {
+        .watermark-text .address {
+            font-size: 18px;
+            color: white;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
             display: flex;
             align-items: center;
             gap: 10px;
-            color: white;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-            padding: 8px 12px;
-            border-radius: 8px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            font-size: 16px;
         }
         
-        .coordinate-info {
+        .watermark-text .coordinates {
             font-family: 'Courier New', monospace;
+            font-size: 18px;
             font-weight: 600;
             color: white;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-            padding: 8px 12px;
-            border-radius: 8px;
+            padding: 10px 15px;
             background: rgba(231, 76, 60, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            font-size: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #e74c3c;
         }
         
-        .controls {
-            padding: 25px;
-            background: #f8f9fa;
+        .watermark-map-container {
+            width: 250px;
+            height: 200px;
+            flex-shrink: 0;
+        }
+        
+        #watermarkMap {
+            width: 100%;
+            height: 100%;
+            border-left: 3px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .camera-placeholder {
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .camera-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
+        
+        .placeholder-text {
+            font-size: 18px;
+            opacity: 0.8;
+        }
+        
+        /* Peta pencarian lokasi */
+        .map-container {
+            height: 350px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 15px;
+            border: 2px solid #dee2e6;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        #locationMap {
+            width: 100%;
+            height: 100%;
         }
         
         .control-group {
@@ -213,17 +200,10 @@
         .control-group h3 {
             color: #2c3e50;
             margin-bottom: 15px;
-            font-size: 18px;
+            font-size: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
-        }
-        
-        .input-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
         }
         
         .input-group {
@@ -238,105 +218,93 @@
             font-weight: 600;
         }
         
-        .input-group input, .input-group select {
+        .input-group input {
             width: 100%;
-            padding: 14px 18px;
+            padding: 14px;
             border: 1px solid #ddd;
-            border-radius: 10px;
+            border-radius: 8px;
             font-size: 15px;
             transition: all 0.3s;
         }
         
-        .input-group input:focus, .input-group select:focus {
+        .input-group input:focus {
             border-color: #4a69bd;
             box-shadow: 0 0 0 3px rgba(74, 105, 189, 0.2);
             outline: none;
         }
         
-        .time-control {
-            background: #fff3cd;
-            padding: 20px;
-            border-radius: 12px;
+        .coord-display {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
             margin-top: 15px;
-            border: 1px solid #ffeaa7;
+            border: 1px solid #bbdefb;
         }
         
-        .time-control h4 {
-            color: #856404;
-            margin-bottom: 15px;
+        .coord-display h4 {
+            color: #1565c0;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: 16px;
         }
         
-        .time-inputs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        .coord-values {
+            display: flex;
             gap: 15px;
         }
         
-        .time-options {
+        .coord-item {
+            flex: 1;
+        }
+        
+        .coord-item label {
+            font-size: 12px;
+            color: #666;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .coord-item .value {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .search-box {
             display: flex;
-            gap: 12px;
-            margin-top: 15px;
-            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
         }
         
-        .time-btn {
-            padding: 10px 16px;
-            background: #f8f9fa;
+        .search-box input {
+            flex: 1;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
+            border-radius: 8px;
+            font-size: 14px;
         }
         
-        .time-btn:hover {
-            background: #e9ecef;
-        }
-        
-        .time-btn.active {
+        .search-box button {
+            padding: 12px 20px;
             background: #4a69bd;
             color: white;
-            border-color: #4a69bd;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
         }
         
-        .coord-manipulation {
-            background: #e3f2fd;
-            padding: 20px;
-            border-radius: 12px;
-            margin-top: 15px;
-        }
-        
-        .coord-manipulation h4 {
-            color: #1565c0;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 16px;
-        }
-        
-        .manipulation-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        
-        .manipulation-controls select, .manipulation-controls input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #bbdefb;
-            border-radius: 6px;
-            font-size: 14px;
+        .search-box button:hover {
+            background: #3c5aa3;
         }
         
         .button-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 15px;
             margin-top: 25px;
         }
         
@@ -364,13 +332,13 @@
             transform: translateY(-2px);
         }
         
-        .btn-record {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        .btn-upload {
+            background: #3498db;
             color: white;
         }
         
-        .btn-record:hover {
-            background: linear-gradient(135deg, #d62c1a, #a93226);
+        .btn-upload:hover {
+            background: #2980b9;
             transform: translateY(-2px);
         }
         
@@ -393,18 +361,6 @@
         
         .btn-download:hover {
             background: #219a52;
-            transform: translateY(-2px);
-        }
-        
-        .btn-upload {
-            background: #3498db;
-            color: white;
-            width: 100%;
-            margin-top: 15px;
-        }
-        
-        .btn-upload:hover {
-            background: #2980b9;
             transform: translateY(-2px);
         }
         
@@ -439,80 +395,46 @@
             border: 1px solid #bee5eb;
         }
         
-        .camera-placeholder {
-            color: white;
-            text-align: center;
-            padding: 30px;
-        }
-        
-        .camera-icon {
-            font-size: 80px;
-            margin-bottom: 20px;
-            opacity: 0.7;
-        }
-        
-        .placeholder-text {
-            font-size: 18px;
-            opacity: 0.8;
-        }
-        
-        .video-controls {
+        .preview-controls {
             display: flex;
-            gap: 15px;
+            justify-content: space-between;
+            align-items: center;
             margin-top: 15px;
         }
         
-        .video-time {
-            color: white;
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 8px 15px;
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 16px;
+        .watermark-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
-        @media (max-width: 650px) {
-            .camera-container {
-                height: 400px;
+        .watermark-toggle label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        @media (max-width: 900px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .left-panel, .right-panel {
+                width: 100%;
             }
             
             .watermark-overlay {
-                width: 95%;
-                padding: 12px;
                 flex-direction: column;
-                gap: 15px;
+                width: 95%;
             }
             
             .watermark-map-container {
                 width: 100%;
-                height: 120px;
+                height: 150px;
             }
             
-            .input-row, .manipulation-controls, .time-inputs {
-                grid-template-columns: 1fr;
-            }
-            
-            .button-group {
-                grid-template-columns: 1fr;
-            }
-            
-            .header h1 {
-                font-size: 20px;
-            }
-            
-            .video-controls {
-                flex-direction: column;
-            }
-            
-            .timestamp-info {
-                font-size: 16px;
-            }
-            
-            .location-info, .coordinate-info {
-                font-size: 14px;
+            #watermarkMap {
+                border-left: none;
+                border-top: 3px solid rgba(255, 255, 255, 0.2);
             }
         }
     </style>
@@ -520,186 +442,143 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📸🎥 Geotag Camera & Video</h1>
-            <p>Ambil foto dan rekam video dengan timestamp, lokasi, dan peta Leaflet</p>
-            <div class="mode-selector">
-                <button class="mode-btn active" id="photoModeBtn" onclick="switchMode('photo')">
-                    📷 Foto
-                </button>
-                <button class="mode-btn" id="videoModeBtn" onclick="switchMode('video')">
-                    🎥 Video
-                </button>
-            </div>
+            <h1>📷 Geotag Camera - Watermark dengan Peta</h1>
+            <p>Ambil foto dengan watermark lokasi dan peta Leaflet</p>
         </div>
         
-        <div class="camera-container">
-            <div id="cameraPlaceholder" class="camera-placeholder">
-                <div class="camera-icon" id="modeIcon">📷</div>
-                <div class="placeholder-text" id="modeText">Klik tombol Ambil Foto untuk memulai</div>
-            </div>
-            <img id="previewImage" class="camera-preview hidden">
-            <video id="previewVideo" class="video-preview hidden" controls></video>
-            
-            <div id="recordingIndicator" class="recording-indicator hidden">
-                <div class="rec-dot"></div>
-                REC
-            </div>
-            
-            <div id="videoTime" class="video-time hidden">00:00</div>
-            
-            <!-- WATERMARK UNTUK FRONTEND (PREVIEW) -->
-            <div id="watermarkOverlay" class="watermark-overlay hidden">
-                <div class="watermark-map-container">
-                    <div id="leafletMap"></div>
-                </div>
-                <div class="watermark-info">
-                    <div class="timestamp-info" id="timestampDisplay">Senin, 01 Jan 2024 12:00:00</div>
-                    <div class="location-info">
-                        <span>📍</span>
-                        <span id="addressDisplay">Jl. Contoh No. 123, Jakarta</span>
+        <div class="main-content">
+            <!-- Panel Kiri: Kontrol dan Peta -->
+            <div class="left-panel">
+                <div class="control-group">
+                    <h3>📍 Pencarian Lokasi</h3>
+                    <div class="search-box">
+                        <input type="text" id="locationSearch" placeholder="Cari lokasi (contoh: Jakarta, Monas)">
+                        <button onclick="searchLocation()">Cari</button>
                     </div>
-                    <div class="coordinate-info" id="coordinateDisplay">Lat: -6.2088, Lng: 106.8456</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="controls">
-            <div class="control-group">
-                <h3>📍 Informasi Lokasi</h3>
-                <div class="input-row">
-                    <div class="input-group">
-                        <label for="latitude">Latitude</label>
-                        <input type="text" id="latitude" placeholder="-6.2088">
+                    
+                    <div class="map-container">
+                        <div id="locationMap"></div>
                     </div>
-                    <div class="input-group">
-                        <label for="longitude">Longitude</label>
-                        <input type="text" id="longitude" placeholder="106.8456">
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label for="address">Alamat Lengkap</label>
-                    <input type="text" id="address" placeholder="Jl. Merdeka No. 123, Jakarta Pusat">
-                </div>
-                
-                <div class="time-control">
-                    <h4>🕐 Waktu Awal Video</h4>
-                    <div class="time-inputs">
-                        <div class="input-group">
-                            <label for="startDate">Tanggal Mulai</label>
-                            <input type="date" id="startDate">
+                    
+                    <div class="coord-display">
+                        <h4>📍 Koordinat Terpilih</h4>
+                        <div class="coord-values">
+                            <div class="coord-item">
+                                <label>Latitude</label>
+                                <div class="value" id="selectedLat">-6.2088</div>
+                            </div>
+                            <div class="coord-item">
+                                <label>Longitude</label>
+                                <div class="value" id="selectedLng">106.8456</div>
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label for="startTime">Waktu Mulai</label>
-                            <input type="time" id="startTime" value="12:00">
-                        </div>
-                    </div>
-                    <div class="time-options">
-                        <button class="time-btn active" onclick="setStartTimeNow()">Waktu Sekarang</button>
-                        <button class="time-btn" onclick="setStartTimeYesterday()">Kemarin</button>
-                        <button class="time-btn" onclick="setStartTimeTomorrow()">Besok</button>
-                        <button class="time-btn" onclick="setCustomStartTime()">Custom</button>
-                    </div>
-                    <div class="checkbox-group" style="margin-top: 15px; display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="timeRunning" checked>
-                        <label for="timeRunning" style="font-size: 14px; font-weight: 500;">Waktu berjalan real-time</label>
+                        <button onclick="useSelectedLocation()" style="margin-top: 10px; width: 100%; padding: 10px; background: #27ae60;">
+                            📍 Gunakan Koordinat Ini
+                        </button>
                     </div>
                 </div>
                 
-                <div class="coord-manipulation">
-                    <h4>🔄 Rekayasa Koordinat</h4>
-                    <div class="manipulation-controls">
-                        <select id="coordOperation">
-                            <option value="none">Tidak ada perubahan</option>
-                            <option value="randomize">Acak sedikit (±0.001)</option>
-                            <option value="offset">Geser koordinat</option>
-                            <option value="swap">Tukar Lat/Lng</option>
-                            <option value="fake">Koordinat acak di Indonesia</option>
-                        </select>
-                        <input type="number" id="offsetValue" placeholder="Offset (derajat)" step="0.0001" value="0.001">
+                <div class="control-group">
+                    <h3>📝 Informasi Lokasi</h3>
+                    <div class="input-group">
+                        <label for="address">Alamat Lengkap</label>
+                        <input type="text" id="address" placeholder="Masukkan alamat lengkap">
+                    </div>
+                    <div class="input-group">
+                        <label for="customText">Teks Tambahan (Opsional)</label>
+                        <input type="text" id="customText" placeholder="Contoh: Survey Lapangan 2024">
                     </div>
                 </div>
             </div>
             
-            <div class="video-controls" id="videoControls" style="display: none;">
-                <div class="input-group">
-                    <label for="videoDuration">Durasi Video (detik)</label>
-                    <input type="number" id="videoDuration" min="1" max="60" value="10">
+            <!-- Panel Kanan: Preview dan Download -->
+            <div class="right-panel">
+                <div class="camera-container">
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <div class="camera-icon">📷</div>
+                        <div class="placeholder-text">Upload atau ambil foto untuk memulai</div>
+                    </div>
+                    <img id="previewImage" class="camera-preview hidden">
+                    
+                    <!-- WATERMARK OUTPUT -->
+                    <div id="watermarkOverlay" class="watermark-overlay hidden">
+                        <div class="watermark-text">
+                            <div class="timestamp" id="timestampDisplay">Senin, 01 Jan 2024 12:00:00</div>
+                            <div class="address">
+                                <span>📍</span>
+                                <span id="addressDisplay">Jl. Contoh No. 123, Jakarta</span>
+                            </div>
+                            <div class="coordinates" id="coordinateDisplay">Lat: -6.2088, Lng: 106.8456</div>
+                            <div class="custom-text" id="customTextDisplay"></div>
+                        </div>
+                        <div class="watermark-map-container">
+                            <div id="watermarkMap"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label for="videoQuality">Kualitas Video</label>
-                    <select id="videoQuality">
-                        <option value="low">Rendah (240p)</option>
-                        <option value="medium" selected>Sedang (480p)</option>
-                        <option value="high">Tinggi (720p)</option>
-                    </select>
+                
+                <div class="preview-controls">
+                    <div class="watermark-toggle">
+                        <input type="checkbox" id="showWatermark" checked onchange="toggleWatermark()">
+                        <label for="showWatermark">Tampilkan Watermark</label>
+                    </div>
+                    <div>
+                        <button onclick="zoomInWatermark()" style="padding: 8px 12px; font-size: 14px;">+</button>
+                        <button onclick="zoomOutWatermark()" style="padding: 8px 12px; font-size: 14px;">-</button>
+                    </div>
                 </div>
+                
+                <div class="button-group">
+                    <button class="btn-capture" onclick="capturePhoto()">
+                        📸 Ambil Foto
+                    </button>
+                    <button class="btn-upload" onclick="uploadPhoto()">
+                        ⬆️ Upload Foto
+                    </button>
+                </div>
+                
+                <button class="btn-download" onclick="downloadPhoto()" id="downloadBtn" disabled>
+                    ⬇️ Download Foto dengan Watermark
+                </button>
+                
+                <button class="btn-reset" onclick="resetAll()" style="margin-top: 15px; width: 100%;">
+                    🔄 Reset Semua
+                </button>
+                
+                <div id="statusMessage" class="status-message hidden"></div>
             </div>
-            
-            <div class="button-group">
-                <button class="btn-capture" id="captureBtn" onclick="captureMedia()">
-                    📷 Ambil Foto
-                </button>
-                <button class="btn-record hidden" id="recordBtn" onclick="toggleRecording()">
-                    ⏺️ Mulai Rekam
-                </button>
-                <button class="btn-reset" onclick="resetAll()">
-                    🔄 Reset
-                </button>
-            </div>
-            
-            <button class="btn-upload" onclick="uploadMedia()" id="uploadBtn">
-                ⬆️ Upload Media
-            </button>
-            
-            <button class="btn-download" onclick="downloadMedia()" id="downloadBtn" disabled>
-                ⬇️ Download Media
-            </button>
-            
-            <div id="statusMessage" class="status-message hidden"></div>
         </div>
     </div>
 
     <input type="file" id="photoInput" class="hidden" accept="image/*" capture="environment">
-    <input type="file" id="videoInput" class="hidden" accept="video/*">
     
     <!-- Leaflet JS untuk peta -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- html2canvas untuk capture watermark -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- Leaflet Geocoder untuk pencarian -->
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     
     <script>
-        // Mode saat ini: 'photo' atau 'video'
-        let currentMode = 'photo';
-        let isRecording = false;
-        let mediaRecorder = null;
-        let recordedChunks = [];
-        let recordingTimer = null;
-        let recordingStartTime = null;
-        let stream = null;
-        let videoStartTime = new Date(); // Waktu awal video
-        let timeInterval = null; // Interval untuk update waktu
-        let isTimeRunning = true; // Waktu berjalan atau tidak
-        let leafletMap = null; // Variabel untuk menyimpan instance peta Leaflet
-        let leafletMarker = null; // Variabel untuk marker peta
-        let watermarkCanvas = null; // Canvas untuk watermark statis
+        // Variabel global
+        let locationMap = null; // Peta untuk pencarian lokasi
+        let watermarkMap = null; // Peta untuk watermark
+        let selectedMarker = null; // Marker di peta pencarian
+        let watermarkMarker = null; // Marker di peta watermark
         
-        // Koordinat yang sudah direkayasa (tetap selama sesi)
-        let manipulatedCoords = {
-            lat: '-6.2088',
-            lng: '106.8456'
+        // Data koordinat
+        let currentCoords = {
+            lat: -6.2088,
+            lng: 106.8456
         };
-
-        // Data untuk menyimpan media dan lokasi
+        
+        // Data untuk foto
         let mediaData = {
             originalDataUrl: '',
-            watermarkedDataUrl: '',
-            location: null,
-            hasGeotag: false,
-            type: 'photo',
-            videoBlob: null
+            type: 'photo'
         };
-
+        
+        // Ukuran watermark (bisa dizoom)
+        let watermarkScale = 1.0;
+        
         // Format tanggal Indonesia
         function formatIndonesianDate(date) {
             const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -716,553 +595,225 @@
             
             return `${dayName}, ${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
         }
-
-        // Format tanggal untuk input date
-        function formatDateForInput(date) {
-            return date.toISOString().split('T')[0];
-        }
-
-        // Format waktu untuk input time
-        function formatTimeForInput(date) {
-            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-        }
-
-        // Fungsi untuk mendapatkan waktu custom dari input
-        function getStartDateTime() {
-            const dateInput = document.getElementById('startDate').value;
-            const timeInput = document.getElementById('startTime').value;
-            
-            if (dateInput && timeInput) {
-                // Gabungkan tanggal dan waktu
-                const dateTimeStr = `${dateInput}T${timeInput}`;
-                return new Date(dateTimeStr);
-            } else if (dateInput) {
-                // Hanya tanggal, gunakan waktu default 12:00
-                const dateTimeStr = `${dateInput}T12:00`;
-                return new Date(dateTimeStr);
-            } else {
-                // Kembalikan waktu sekarang
-                return new Date();
-            }
-        }
-
-        // Fungsi untuk set waktu ke sekarang
-        function setStartTimeNow() {
-            const now = new Date();
-            videoStartTime = now;
-            document.getElementById('startDate').value = formatDateForInput(now);
-            document.getElementById('startTime').value = formatTimeForInput(now);
-            updateWatermark();
-            updateTimeButtons('now');
-        }
-
-        // Fungsi untuk set waktu ke kemarin
-        function setStartTimeYesterday() {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            videoStartTime = yesterday;
-            document.getElementById('startDate').value = formatDateForInput(yesterday);
-            document.getElementById('startTime').value = formatTimeForInput(yesterday);
-            updateWatermark();
-            updateTimeButtons('yesterday');
-        }
-
-        // Fungsi untuk set waktu ke besok
-        function setStartTimeTomorrow() {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            videoStartTime = tomorrow;
-            document.getElementById('startDate').value = formatDateForInput(tomorrow);
-            document.getElementById('startTime').value = formatTimeForInput(tomorrow);
-            updateWatermark();
-            updateTimeButtons('tomorrow');
-        }
-
-        // Fungsi untuk set waktu custom
-        function setCustomStartTime() {
-            videoStartTime = getStartDateTime();
-            updateWatermark();
-            updateTimeButtons('custom');
-        }
-
-        // Fungsi untuk update tombol waktu aktif
-        function updateTimeButtons(activeBtn) {
-            const buttons = document.querySelectorAll('.time-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            
-            if (activeBtn === 'now') {
-                document.querySelector('.time-btn:nth-child(1)').classList.add('active');
-            } else if (activeBtn === 'yesterday') {
-                document.querySelector('.time-btn:nth-child(2)').classList.add('active');
-            } else if (activeBtn === 'tomorrow') {
-                document.querySelector('.time-btn:nth-child(3)').classList.add('active');
-            } else {
-                document.querySelector('.time-btn:nth-child(4)').classList.add('active');
-            }
-        }
-
-        // Fungsi untuk rekayasa koordinat (hanya dijalankan sekali)
-        function manipulateCoordinatesOnce(lat, lng) {
-            const operation = document.getElementById('coordOperation').value;
-            const offset = parseFloat(document.getElementById('offsetValue').value) || 0.001;
-            
-            let newLat = parseFloat(lat);
-            let newLng = parseFloat(lng);
-            
-            if (isNaN(newLat) || isNaN(newLng)) {
-                newLat = -6.2088;
-                newLng = 106.8456;
-            }
-            
-            switch(operation) {
-                case 'randomize':
-                    // Tambahkan nilai random kecil (±0.001)
-                    newLat += (Math.random() - 0.5) * 0.002;
-                    newLng += (Math.random() - 0.5) * 0.002;
-                    break;
-                    
-                case 'offset':
-                    // Geser koordinat dengan offset tertentu
-                    newLat += offset;
-                    newLng += offset;
-                    break;
-                    
-                case 'swap':
-                    // Tukar latitude dan longitude
-                    [newLat, newLng] = [newLng, newLat];
-                    break;
-                    
-                case 'fake':
-                    // Koordinat acak di Indonesia
-                    newLat = -6.2 + (Math.random() - 0.5) * 10;
-                    newLng = 106.8 + (Math.random() - 0.5) * 10;
-                    break;
-                    
-                case 'none':
-                default:
-                    // Tidak ada perubahan
-                    break;
-            }
-            
-            // Batasi koordinat ke wilayah Indonesia (sekitar)
-            newLat = Math.max(-11, Math.min(6, newLat));
-            newLng = Math.max(95, Math.min(141, newLng));
-            
-            // Simpan koordinat yang sudah direkayasa
-            manipulatedCoords = {
-                lat: newLat.toFixed(6),
-                lng: newLng.toFixed(6)
-            };
-            
-            return manipulatedCoords;
-        }
-
-        // Fungsi untuk menginisialisasi atau memperbarui peta Leaflet
-        function updateLeafletMap(lat, lng) {
-            const mapContainer = document.getElementById('leafletMap');
-            
-            // Hapus peta yang ada jika sudah ada
-            if (leafletMap) {
-                leafletMap.remove();
-            }
-            
-            // Inisialisasi peta baru
-            leafletMap = L.map('leafletMap').setView([lat, lng], 15);
+        
+        // Inisialisasi peta pencarian lokasi
+        function initLocationMap() {
+            locationMap = L.map('locationMap').setView([-6.2088, 106.8456], 13);
             
             // Tambahkan tile layer OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 19
-            }).addTo(leafletMap);
+            }).addTo(locationMap);
             
-            // Hapus marker yang ada jika sudah ada
-            if (leafletMarker) {
-                leafletMap.removeLayer(leafletMarker);
-            }
+            // Tambahkan geocoder untuk pencarian
+            const geocoder = L.Control.geocoder({
+                defaultMarkGeocode: false,
+                placeholder: 'Cari lokasi...'
+            }).addTo(locationMap);
             
-            // Tambahkan marker baru
-            leafletMarker = L.marker([lat, lng]).addTo(leafletMap)
-                .bindPopup(`Lokasi: ${lat.toFixed(6)}, ${lng.toFixed(6)}`)
+            geocoder.on('markgeocode', function(e) {
+                const latlng = e.geocode.center;
+                locationMap.setView(latlng, 16);
+                updateSelectedLocation(latlng.lat, latlng.lng, e.geocode.name);
+            });
+            
+            // Tambahkan marker awal
+            selectedMarker = L.marker([-6.2088, 106.8456]).addTo(locationMap)
+                .bindPopup('Lokasi terpilih<br>Klik peta untuk mengubah')
                 .openPopup();
                 
-            // Nonaktifkan interaksi pada peta (hanya untuk tampilan)
-            leafletMap.scrollWheelZoom.disable();
-            leafletMap.dragging.disable();
-            leafletMap.touchZoom.disable();
-            leafletMap.doubleClickZoom.disable();
-            leafletMap.boxZoom.disable();
-            leafletMap.keyboard.disable();
+            // Event klik peta untuk memilih lokasi
+            locationMap.on('click', function(e) {
+                updateSelectedLocation(e.latlng.lat, e.latlng.lng);
+            });
             
-            // Update watermark canvas
-            createWatermarkCanvas(lat, lng);
+            // Event untuk mengambil lokasi saat ini
+            document.getElementById('locationSearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchLocation();
+                }
+            });
         }
-
-        // Fungsi untuk membuat watermark canvas (untuk backend output)
-        function createWatermarkCanvas(lat, lng) {
-            // Buat canvas untuk watermark statis
-            watermarkCanvas = document.createElement('canvas');
-            const ctx = watermarkCanvas.getContext('2d');
+        
+        // Inisialisasi peta untuk watermark
+        function initWatermarkMap() {
+            watermarkMap = L.map('watermarkMap', {
+                zoomControl: false,
+                dragging: false,
+                touchZoom: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                boxZoom: false,
+                keyboard: false,
+                attributionControl: false
+            }).setView([currentCoords.lat, currentCoords.lng], 15);
             
-            // Ukuran watermark (sesuai dengan frontend)
-            const watermarkWidth = 550;
-            const watermarkHeight = 170;
+            // Tambahkan tile layer (gunakan yang lebih gelap untuk watermark)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 18
+            }).addTo(watermarkMap);
             
-            watermarkCanvas.width = watermarkWidth;
-            watermarkCanvas.height = watermarkHeight;
+            // Tambahkan marker
+            watermarkMarker = L.marker([currentCoords.lat, currentCoords.lng]).addTo(watermarkMap)
+                .bindPopup('Lokasi foto')
+                .openPopup();
+        }
+        
+        // Update lokasi terpilih di peta pencarian
+        function updateSelectedLocation(lat, lng, address = null) {
+            currentCoords.lat = lat;
+            currentCoords.lng = lng;
             
-            // Background watermark
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-            ctx.beginPath();
-            ctx.roundRect(0, 0, watermarkWidth, watermarkHeight, 12);
-            ctx.fill();
-            
-            // Border putih tipis
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            
-            // Area peta (kiri)
-            const mapSize = 140;
-            const mapX = 15;
-            const mapY = 15;
-            
-            // Gambar area peta
-            ctx.fillStyle = '#2c3e50';
-            ctx.beginPath();
-            ctx.roundRect(mapX, mapY, mapSize, mapSize, 8);
-            ctx.fill();
-            
-            // Border peta
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            
-            // Gambar marker di peta
-            const markerX = mapX + mapSize/2;
-            const markerY = mapY + mapSize/2;
-            
-            // Outer marker (red)
-            ctx.fillStyle = '#e74c3c';
-            ctx.beginPath();
-            ctx.arc(markerX, markerY, 10, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Inner marker (white)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.beginPath();
-            ctx.arc(markerX, markerY, 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Teks "MAP" di peta
-            ctx.font = 'bold 16px Arial';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.textAlign = 'center';
-            ctx.fillText('MAP', markerX, mapY + mapSize - 10);
-            
-            // Area teks (kanan)
-            const textX = mapX + mapSize + 20;
-            const textY = mapY + 10;
-            
-            // Teks timestamp
-            const currentTime = new Date();
-            if (isTimeRunning && videoStartTime) {
-                const elapsed = new Date().getTime() - (new Date()).getTime() + videoStartTime.getTime();
-                currentTime.setTime(elapsed);
-            } else if (videoStartTime) {
-                currentTime.setTime(videoStartTime.getTime());
+            // Update marker
+            if (selectedMarker) {
+                selectedMarker.setLatLng([lat, lng]);
+            } else {
+                selectedMarker = L.marker([lat, lng]).addTo(locationMap);
             }
             
-            ctx.font = 'bold 18px Arial';
-            ctx.fillStyle = 'white';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            ctx.fillText(formatIndonesianDate(currentTime), textX, textY);
+            // Update tampilan koordinat
+            document.getElementById('selectedLat').textContent = lat.toFixed(6);
+            document.getElementById('selectedLng').textContent = lng.toFixed(6);
             
-            // Teks alamat
-            const address = document.getElementById('address').value.trim() || 'Jl. Contoh No. 123, Jakarta';
-            ctx.font = '16px Arial';
-            ctx.fillStyle = 'white';
-            ctx.fillText(address, textX, textY + 35);
+            // Update alamat jika ada
+            if (address) {
+                document.getElementById('address').value = address;
+            }
             
-            // Teks koordinat
-            ctx.font = '600 16px "Courier New", monospace';
-            ctx.fillStyle = 'white';
-            ctx.fillText(`Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`, textX, textY + 70);
+            // Update peta watermark jika sudah ada
+            if (watermarkMap) {
+                watermarkMap.setView([lat, lng], 15);
+                if (watermarkMarker) {
+                    watermarkMarker.setLatLng([lat, lng]);
+                }
+            }
             
-            // Shadow effect
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-            ctx.shadowBlur = 15;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 5;
+            // Update watermark display
+            updateWatermarkDisplay();
         }
-
-        // Fungsi untuk update watermark dengan waktu berjalan dan peta
-        function updateWatermark() {
+        
+        // Gunakan lokasi terpilih
+        function useSelectedLocation() {
+            updateWatermarkMap(currentCoords.lat, currentCoords.lng);
+            showStatus('📍 Koordinat berhasil diterapkan ke watermark', 'success');
+        }
+        
+        // Update peta watermark
+        function updateWatermarkMap(lat, lng) {
+            if (!watermarkMap) {
+                initWatermarkMap();
+            }
+            
+            watermarkMap.setView([lat, lng], 15);
+            if (watermarkMarker) {
+                watermarkMarker.setLatLng([lat, lng]);
+            }
+            
+            // Update koordinat display
+            document.getElementById('coordinateDisplay').textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+            
+            // Update watermark overlay
+            updateWatermarkDisplay();
+        }
+        
+        // Update tampilan watermark
+        function updateWatermarkDisplay() {
             const timestampDisplay = document.getElementById('timestampDisplay');
             const addressDisplay = document.getElementById('addressDisplay');
             const coordinateDisplay = document.getElementById('coordinateDisplay');
+            const customTextDisplay = document.getElementById('customTextDisplay');
             
-            // Cek apakah waktu harus berjalan
-            isTimeRunning = document.getElementById('timeRunning').checked;
-            
-            let currentDisplayTime;
-            if (isTimeRunning && videoStartTime) {
-                // Waktu berjalan dari waktu awal
-                const elapsed = new Date().getTime() - (new Date()).getTime() + videoStartTime.getTime();
-                currentDisplayTime = new Date(elapsed);
-            } else if (videoStartTime) {
-                // Waktu tetap pada waktu awal
-                currentDisplayTime = new Date(videoStartTime);
-            } else {
-                // Waktu sekarang
-                currentDisplayTime = new Date();
-            }
-            
-            timestampDisplay.textContent = formatIndonesianDate(currentDisplayTime);
-            
-            // Ambil data dari form
-            const latitude = document.getElementById('latitude').value.trim();
-            const longitude = document.getElementById('longitude').value.trim();
-            const address = document.getElementById('address').value.trim();
-            
-            // Jika ada koordinat baru, rekayasa dan simpan
-            let latToUse, lngToUse;
-            if (latitude && longitude) {
-                const coords = manipulateCoordinatesOnce(latitude, longitude);
-                latToUse = parseFloat(coords.lat);
-                lngToUse = parseFloat(coords.lng);
-            } else {
-                latToUse = parseFloat(manipulatedCoords.lat);
-                lngToUse = parseFloat(manipulatedCoords.lng);
-            }
-            
-            // Update peta Leaflet dengan koordinat yang sudah direkayasa
-            updateLeafletMap(latToUse, lngToUse);
-            
-            // Update teks koordinat
-            coordinateDisplay.textContent = `Lat: ${latToUse.toFixed(6)}, Lng: ${lngToUse.toFixed(6)}`;
+            // Update timestamp
+            timestampDisplay.textContent = formatIndonesianDate(new Date());
             
             // Update alamat
+            const address = document.getElementById('address').value.trim();
             if (address) {
                 addressDisplay.textContent = address;
             } else {
-                addressDisplay.textContent = 'Jl. Contoh No. 123, Jakarta';
+                addressDisplay.textContent = 'Lokasi tidak ditentukan';
             }
             
-            // Simpan data lokasi
-            if (address) {
-                mediaData.location = {
-                    lat: latToUse,
-                    lng: lngToUse,
-                    address: address,
-                    timestamp: currentDisplayTime.toISOString(),
-                    manipulated: document.getElementById('coordOperation').value !== 'none'
-                };
-                mediaData.hasGeotag = true;
-            }
-        }
-
-        // Fungsi untuk memulai interval update waktu
-        function startTimeUpdate() {
-            if (timeInterval) {
-                clearInterval(timeInterval);
-            }
+            // Update koordinat
+            coordinateDisplay.textContent = `Lat: ${currentCoords.lat.toFixed(6)}, Lng: ${currentCoords.lng.toFixed(6)}`;
             
-            // Update watermark setiap detik jika waktu berjalan
-            if (isTimeRunning) {
-                timeInterval = setInterval(updateWatermark, 1000);
-            }
-        }
-
-        // Fungsi untuk switch mode
-        function switchMode(mode) {
-            currentMode = mode;
-            
-            // Update UI mode selector
-            document.getElementById('photoModeBtn').classList.remove('active');
-            document.getElementById('videoModeBtn').classList.remove('active');
-            document.getElementById(mode + 'ModeBtn').classList.add('active');
-            
-            // Update tombol
-            const captureBtn = document.getElementById('captureBtn');
-            const recordBtn = document.getElementById('recordBtn');
-            const videoControls = document.getElementById('videoControls');
-            
-            if (mode === 'photo') {
-                captureBtn.classList.remove('hidden');
-                recordBtn.classList.add('hidden');
-                videoControls.style.display = 'none';
-                captureBtn.innerHTML = '📷 Ambil Foto';
-                document.getElementById('modeIcon').textContent = '📷';
-                document.getElementById('modeText').textContent = 'Klik tombol Ambil Foto untuk memulai';
+            // Update teks custom
+            const customText = document.getElementById('customText').value.trim();
+            if (customText) {
+                customTextDisplay.textContent = customText;
+                customTextDisplay.style.display = 'block';
+                customTextDisplay.style.fontSize = '16px';
+                customTextDisplay.style.color = 'white';
+                customTextDisplay.style.marginTop = '10px';
+                customTextDisplay.style.padding = '8px 12px';
+                customTextDisplay.style.background = 'rgba(52, 152, 219, 0.3)';
+                customTextDisplay.style.borderRadius = '6px';
+                customTextDisplay.style.borderLeft = '4px solid #3498db';
             } else {
-                captureBtn.classList.add('hidden');
-                recordBtn.classList.remove('hidden');
-                videoControls.style.display = 'flex';
-                document.getElementById('modeIcon').textContent = '🎥';
-                document.getElementById('modeText').textContent = 'Klik tombol Mulai Rekam untuk memulai';
+                customTextDisplay.style.display = 'none';
             }
             
-            // Reset preview jika ada
-            resetPreview();
+            // Update ukuran watermark berdasarkan scale
+            const watermarkOverlay = document.getElementById('watermarkOverlay');
+            if (watermarkOverlay && watermarkScale !== 1.0) {
+                const currentWidth = 700; // width default
+                const currentHeight = 200; // height default
+                watermarkOverlay.style.width = (currentWidth * watermarkScale) + 'px';
+                watermarkOverlay.style.maxWidth = '90%';
+            }
+        }
+        
+        // Cari lokasi berdasarkan teks
+        function searchLocation() {
+            const query = document.getElementById('locationSearch').value.trim();
+            if (!query) {
+                showStatus('⚠️ Masukkan kata kunci pencarian', 'error');
+                return;
+            }
             
-            // Mulai update waktu
-            startTimeUpdate();
-        }
-
-        // Fungsi untuk mengambil foto atau memulai rekaman
-        function captureMedia() {
-            if (currentMode === 'photo') {
-                document.getElementById('photoInput').click();
-            }
-        }
-
-        // Fungsi untuk toggle recording
-        async function toggleRecording() {
-            if (!isRecording) {
-                await startRecording();
-            } else {
-                stopRecording();
-            }
-        }
-
-        // Fungsi untuk memulai rekaman
-        async function startRecording() {
-            try {
-                // Minta akses kamera
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }, 
-                    audio: true 
+            showStatus('🔍 Mencari lokasi...', 'info');
+            
+            // Gunakan Nominatim API untuk geocoding
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const result = data[0];
+                        const lat = parseFloat(result.lat);
+                        const lng = parseFloat(result.lon);
+                        const displayName = result.display_name;
+                        
+                        updateSelectedLocation(lat, lng, displayName);
+                        showStatus('✅ Lokasi ditemukan', 'success');
+                    } else {
+                        showStatus('❌ Lokasi tidak ditemukan', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching location:', error);
+                    showStatus('❌ Gagal mencari lokasi', 'error');
                 });
-                
-                // Tampilkan preview video
-                const previewVideo = document.getElementById('previewVideo');
-                previewVideo.srcObject = stream;
-                previewVideo.classList.remove('hidden');
-                previewVideo.muted = true;
-                previewVideo.play();
-                
-                // Sembunyikan placeholder
-                document.getElementById('cameraPlaceholder').classList.add('hidden');
-                
-                // Setup MediaRecorder
-                recordedChunks = [];
-                const quality = document.getElementById('videoQuality').value;
-                let mimeType = 'video/webm;codecs=vp9';
-                
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    mimeType = 'video/webm;codecs=vp8';
-                }
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    mimeType = 'video/webm';
-                }
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    mimeType = 'video/mp4';
-                }
-                
-                mediaRecorder = new MediaRecorder(stream, { mimeType });
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                    }
-                };
-                
-                mediaRecorder.onstop = () => {
-                    const videoBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
-                    mediaData.videoBlob = videoBlob;
-                    mediaData.type = 'video';
-                    
-                    // Tampilkan video yang sudah direkam
-                    previewVideo.srcObject = null;
-                    previewVideo.src = URL.createObjectURL(videoBlob);
-                    previewVideo.controls = true;
-                    previewVideo.muted = false;
-                    
-                    // Tampilkan watermark dengan peta
-                    updateWatermark();
-                    document.getElementById('watermarkOverlay').classList.remove('hidden');
-                    
-                    // Aktifkan tombol download
-                    document.getElementById('downloadBtn').disabled = false;
-                    
-                    showStatus('✅ Video berhasil direkam!', 'success');
-                };
-                
-                // Mulai recording
-                const duration = parseInt(document.getElementById('videoDuration').value) * 1000;
-                mediaRecorder.start();
-                isRecording = true;
-                
-                // Update UI
-                document.getElementById('recordBtn').innerHTML = '⏹️ Stop Rekam';
-                document.getElementById('recordBtn').classList.add('recording');
-                document.getElementById('recordingIndicator').classList.remove('hidden');
-                document.getElementById('videoTime').classList.remove('hidden');
-                
-                // Timer untuk durasi
-                recordingStartTime = Date.now();
-                updateRecordingTime();
-                
-                // Auto stop setelah durasi tertentu
-                setTimeout(() => {
-                    if (isRecording) {
-                        stopRecording();
-                    }
-                }, duration);
-                
-                showStatus('⏺️ Sedang merekam video...', 'info');
-                
-            } catch (error) {
-                showStatus('❌ Gagal mengakses kamera: ' + error.message, 'error');
-            }
         }
-
-        // Fungsi untuk update waktu rekaman
-        function updateRecordingTime() {
-            if (!isRecording) return;
-            
-            const elapsed = Date.now() - recordingStartTime;
-            const seconds = Math.floor(elapsed / 1000);
-            const minutes = Math.floor(seconds / 60);
-            const displaySeconds = seconds % 60;
-            
-            document.getElementById('videoTime').textContent = 
-                `${minutes.toString().padStart(2, '0')}:${displaySeconds.toString().padStart(2, '0')}`;
-            
-            setTimeout(updateRecordingTime, 1000);
+        
+        // Ambil foto dari kamera
+        function capturePhoto() {
+            document.getElementById('photoInput').click();
         }
-
-        // Fungsi untuk stop recording
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                
-                // Stop semua track
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-                
-                // Update UI
-                document.getElementById('recordBtn').innerHTML = '⏺️ Mulai Rekam';
-                document.getElementById('recordBtn').classList.remove('recording');
-                document.getElementById('recordingIndicator').classList.add('hidden');
-                document.getElementById('videoTime').classList.add('hidden');
-                
-                clearTimeout(recordingTimer);
-            }
+        
+        // Upload foto
+        function uploadPhoto() {
+            document.getElementById('photoInput').click();
         }
-
-        // Fungsi untuk memproses foto yang diambil
+        
+        // Proses foto yang diambil/diupload
         function processPhoto(input) {
             const file = input.files[0];
             if (!file) return;
 
-            // Validasi ukuran file (max 10MB)
+            // Validasi ukuran file
             if (file.size > 10 * 1024 * 1024) {
                 showStatus('❌ Ukuran file terlalu besar! Maksimal 10MB.', 'error');
                 return;
@@ -1281,92 +832,34 @@
                 
                 // Simpan foto original
                 mediaData.originalDataUrl = e.target.result;
-                mediaData.hasGeotag = false;
-                mediaData.type = 'photo';
                 
-                // Tampilkan watermark dengan peta Leaflet
-                updateWatermark();
+                // Inisialisasi peta watermark jika belum
+                if (!watermarkMap) {
+                    initWatermarkMap();
+                }
+                
+                // Tampilkan watermark
                 document.getElementById('watermarkOverlay').classList.remove('hidden');
                 
                 // Aktifkan tombol download
                 document.getElementById('downloadBtn').disabled = false;
                 
-                showStatus('✅ Foto berhasil diambil. Isi data lokasi untuk memperbarui watermark.', 'info');
+                // Update watermark display
+                updateWatermarkDisplay();
+                
+                showStatus('✅ Foto berhasil diupload. Atur lokasi di peta sebelah kiri.', 'success');
             };
             
             reader.readAsDataURL(file);
         }
-
-        // Fungsi untuk memproses video yang diupload
-        function processVideo(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            // Validasi ukuran file (max 50MB untuk video)
-            if (file.size > 50 * 1024 * 1024) {
-                showStatus('❌ Ukuran file terlalu besar! Maksimal 50MB.', 'error');
+        
+        // Download foto dengan watermark
+        function downloadPhoto() {
+            if (!mediaData.originalDataUrl) {
+                showStatus('❌ Tidak ada foto untuk didownload!', 'error');
                 return;
             }
 
-            // Validasi tipe file
-            if (!file.type.startsWith('video/')) {
-                showStatus('❌ File harus berupa video!', 'error');
-                return;
-            }
-
-            const videoURL = URL.createObjectURL(file);
-            const previewVideo = document.getElementById('previewVideo');
-            
-            previewVideo.src = videoURL;
-            previewVideo.classList.remove('hidden');
-            previewVideo.controls = true;
-            
-            // Sembunyikan placeholder
-            document.getElementById('cameraPlaceholder').classList.add('hidden');
-            
-            // Simpan video
-            mediaData.videoBlob = file;
-            mediaData.type = 'video';
-            
-            // Tampilkan watermark dengan peta
-            updateWatermark();
-            document.getElementById('watermarkOverlay').classList.remove('hidden');
-            
-            // Aktifkan tombol download
-            document.getElementById('downloadBtn').disabled = false;
-            
-            showStatus('✅ Video berhasil diupload. Isi data lokasi untuk memperbarui watermark.', 'info');
-        }
-
-        // Fungsi untuk upload media
-        function uploadMedia() {
-            if (currentMode === 'photo') {
-                document.getElementById('photoInput').click();
-            } else {
-                document.getElementById('videoInput').click();
-            }
-        }
-
-        // Fungsi untuk download media dengan watermark
-        async function downloadMedia() {
-            if (!mediaData.originalDataUrl && !mediaData.videoBlob) {
-                showStatus('❌ Tidak ada media untuk didownload!', 'error');
-                return;
-            }
-
-            try {
-                if (mediaData.type === 'photo') {
-                    await downloadPhotoWithWatermark();
-                } else {
-                    await downloadVideoWithWatermark();
-                }
-            } catch (error) {
-                showStatus('❌ Error mendownload media: ' + error.message, 'error');
-            }
-        }
-
-        // Fungsi untuk download foto dengan watermark dan peta
-        async function downloadPhotoWithWatermark() {
             showStatus('⏳ Sedang memproses foto dengan watermark...', 'info');
             
             const img = new Image();
@@ -1382,38 +875,8 @@
                 // Draw foto asli
                 ctx.drawImage(img, 0, 0);
                 
-                // Ukuran watermark relatif terhadap foto
-                const scaleFactor = Math.min(1, canvas.width / 800);
-                const watermarkWidth = 550 * scaleFactor;
-                const watermarkHeight = 170 * scaleFactor;
-                
-                // Posisi watermark (bawah tengah)
-                const watermarkX = (canvas.width - watermarkWidth) / 2;
-                const watermarkY = canvas.height - watermarkHeight - 20;
-                
-                // Gambar watermark canvas ke foto
-                if (watermarkCanvas) {
-                    // Scale watermark canvas ke ukuran yang sesuai
-                    const tempCanvas = document.createElement('canvas');
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCanvas.width = watermarkWidth;
-                    tempCanvas.height = watermarkHeight;
-                    
-                    // Draw watermark dengan kualitas yang baik
-                    tempCtx.drawImage(watermarkCanvas, 0, 0, watermarkWidth, watermarkHeight);
-                    
-                    // Gambar ke foto utama dengan efek shadow
-                    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-                    ctx.shadowBlur = 15 * scaleFactor;
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 5 * scaleFactor;
-                    
-                    ctx.drawImage(tempCanvas, watermarkX, watermarkY, watermarkWidth, watermarkHeight);
-                    
-                    // Reset shadow
-                    ctx.shadowBlur = 0;
-                    ctx.shadowOffsetY = 0;
-                }
+                // Buat watermark di canvas
+                createWatermarkOnCanvas(ctx, canvas.width, canvas.height);
                 
                 // Konversi ke blob dan download
                 canvas.toBlob(function(blob) {
@@ -1430,179 +893,169 @@
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                     
-                    showStatus('✅ Foto berhasil didownload dengan watermark dan peta!', 'success');
+                    showStatus('✅ Foto berhasil didownload dengan watermark!', 'success');
                 }, 'image/jpeg', 0.95);
             };
             
             img.src = mediaData.originalDataUrl;
         }
-
-        // Fungsi untuk download video dengan watermark (waktu berjalan, koordinat tetap)
-        async function downloadVideoWithWatermark() {
-            showStatus('⏳ Sedang memproses video dengan watermark dan peta...', 'info');
+        
+        // Buat watermark di canvas (untuk output)
+        function createWatermarkOnCanvas(ctx, imgWidth, imgHeight) {
+            // Hitung ukuran watermark berdasarkan ukuran gambar
+            const scaleFactor = Math.min(1, imgWidth / 1200);
+            const watermarkWidth = 700 * scaleFactor;
+            const watermarkHeight = 200 * scaleFactor;
             
-            const video = document.getElementById('previewVideo');
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
+            // Posisi watermark (bawah tengah)
+            const watermarkX = (imgWidth - watermarkWidth) / 2;
+            const watermarkY = imgHeight - watermarkHeight - 30;
             
-            // Set canvas size sesuai video
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
+            // Background watermark (hitam solid)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(watermarkX, watermarkY, watermarkWidth, watermarkHeight, 12 * scaleFactor);
+            ctx.fill();
             
-            // Buat video element baru
-            const outputVideo = document.createElement('video');
-            const mediaStream = canvas.captureStream(30); // 30 fps
-            const recorder = new MediaRecorder(mediaStream);
-            const chunks = [];
+            // Border putih tipis
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 2 * scaleFactor;
+            ctx.stroke();
             
-            recorder.ondataavailable = (e) => chunks.push(e.data);
-            recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const fileName = `geotag-video-${timestamp}.webm`;
-                
-                // Download video
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                showStatus('✅ Video berhasil didownload dengan watermark dan peta!', 'success');
-            };
+            // Area teks (kiri)
+            const textX = watermarkX + 25 * scaleFactor;
+            const textY = watermarkY + 25 * scaleFactor;
             
-            // Mulai rekaman canvas
-            recorder.start();
+            // Teks timestamp
+            ctx.font = `bold ${20 * scaleFactor}px Arial`;
+            ctx.fillStyle = 'white';
+            ctx.textBaseline = 'top';
+            ctx.fillText(formatIndonesianDate(new Date()), textX, textY);
             
-            // Fungsi untuk menggambar frame dengan watermark
-            function drawFrame() {
-                if (video.paused || video.ended) {
-                    recorder.stop();
-                    return;
-                }
-                
-                // Draw video frame
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Ukuran watermark relatif terhadap video
-                const scaleFactor = Math.min(1, canvas.width / 800);
-                const watermarkWidth = 550 * scaleFactor;
-                const watermarkHeight = 170 * scaleFactor;
-                
-                // Posisi watermark (bawah tengah)
-                const watermarkX = (canvas.width - watermarkWidth) / 2;
-                const watermarkY = canvas.height - watermarkHeight - 15;
-                
-                // Gambar watermark canvas ke video frame
-                if (watermarkCanvas) {
-                    // Scale watermark canvas ke ukuran yang sesuai
-                    const tempCanvas = document.createElement('canvas');
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCanvas.width = watermarkWidth;
-                    tempCanvas.height = watermarkHeight;
-                    
-                    // Update timestamp di watermark untuk frame ini
-                    const lat = parseFloat(manipulatedCoords.lat);
-                    const lng = parseFloat(manipulatedCoords.lng);
-                    createWatermarkCanvas(lat, lng); // Update watermark dengan waktu saat ini
-                    
-                    // Draw watermark yang sudah diupdate
-                    tempCtx.drawImage(watermarkCanvas, 0, 0, watermarkWidth, watermarkHeight);
-                    
-                    // Gambar ke frame video dengan efek shadow
-                    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-                    ctx.shadowBlur = 15 * scaleFactor;
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 5 * scaleFactor;
-                    
-                    ctx.drawImage(tempCanvas, watermarkX, watermarkY, watermarkWidth, watermarkHeight);
-                    
-                    // Reset shadow
-                    ctx.shadowBlur = 0;
-                    ctx.shadowOffsetY = 0;
-                }
-                
-                // Request frame berikutnya
-                requestAnimationFrame(drawFrame);
+            // Teks alamat
+            const address = document.getElementById('address').value.trim() || 'Lokasi tidak ditentukan';
+            ctx.font = `${18 * scaleFactor}px Arial`;
+            ctx.fillText(`📍 ${address}`, textX, textY + 35 * scaleFactor);
+            
+            // Teks koordinat
+            ctx.font = `600 ${18 * scaleFactor}px "Courier New", monospace`;
+            ctx.fillText(`Lat: ${currentCoords.lat.toFixed(6)}, Lng: ${currentCoords.lng.toFixed(6)}`, 
+                        textX, textY + 70 * scaleFactor);
+            
+            // Teks custom
+            const customText = document.getElementById('customText').value.trim();
+            if (customText) {
+                ctx.font = `${16 * scaleFactor}px Arial`;
+                ctx.fillText(customText, textX, textY + 105 * scaleFactor);
             }
             
-            // Mulai menggambar
-            video.currentTime = 0;
-            video.play();
-            drawFrame();
+            // Area peta (kanan)
+            const mapX = watermarkX + watermarkWidth - 250 * scaleFactor;
+            const mapY = watermarkY + 25 * scaleFactor;
+            const mapSize = 150 * scaleFactor;
             
-            // Stop setelah video selesai
-            video.onended = () => {
-                recorder.stop();
-            };
+            // Background peta (abu-abu)
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.roundRect(mapX, mapY, mapSize, mapSize, 8 * scaleFactor);
+            ctx.fill();
+            
+            // Gambar marker di peta
+            const markerX = mapX + mapSize/2;
+            const markerY = mapY + mapSize/2;
+            
+            // Outer marker (red)
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(markerX, markerY, 12 * scaleFactor, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Inner marker (white)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(markerX, markerY, 6 * scaleFactor, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Teks "MAP" kecil di bawah
+            ctx.font = `bold ${12 * scaleFactor}px Arial`;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.textAlign = 'center';
+            ctx.fillText('PETA LOKASI', markerX, mapY + mapSize - 10 * scaleFactor);
+            
+            // Shadow effect
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 15 * scaleFactor;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 5 * scaleFactor;
         }
-
-        // Fungsi untuk reset preview
-        function resetPreview() {
-            // Stop recording jika sedang berlangsung
-            if (isRecording) {
-                stopRecording();
+        
+        // Toggle tampilan watermark
+        function toggleWatermark() {
+            const show = document.getElementById('showWatermark').checked;
+            const watermark = document.getElementById('watermarkOverlay');
+            
+            if (show && mediaData.originalDataUrl) {
+                watermark.classList.remove('hidden');
+            } else {
+                watermark.classList.add('hidden');
             }
-            
-            // Stop interval waktu
-            if (timeInterval) {
-                clearInterval(timeInterval);
-                timeInterval = null;
-            }
-            
-            // Reset preview elements
-            document.getElementById('previewImage').classList.add('hidden');
-            document.getElementById('previewVideo').classList.add('hidden');
-            document.getElementById('previewVideo').src = '';
-            document.getElementById('previewVideo').srcObject = null;
-            document.getElementById('watermarkOverlay').classList.add('hidden');
-            document.getElementById('cameraPlaceholder').classList.remove('hidden');
-            document.getElementById('recordingIndicator').classList.add('hidden');
-            document.getElementById('videoTime').classList.add('hidden');
-            
-            // Nonaktifkan tombol download
-            document.getElementById('downloadBtn').disabled = true;
         }
-
-        // Fungsi untuk reset semua
+        
+        // Zoom in watermark
+        function zoomInWatermark() {
+            if (watermarkScale < 1.5) {
+                watermarkScale += 0.1;
+                updateWatermarkSize();
+            }
+        }
+        
+        // Zoom out watermark
+        function zoomOutWatermark() {
+            if (watermarkScale > 0.7) {
+                watermarkScale -= 0.1;
+                updateWatermarkSize();
+            }
+        }
+        
+        // Update ukuran watermark
+        function updateWatermarkSize() {
+            const watermark = document.getElementById('watermarkOverlay');
+            if (watermark) {
+                const baseWidth = 700;
+                watermark.style.width = (baseWidth * watermarkScale) + 'px';
+                showStatus(`Watermark scale: ${watermarkScale.toFixed(1)}x`, 'info');
+                setTimeout(() => {
+                    document.getElementById('statusMessage').classList.add('hidden');
+                }, 1500);
+            }
+        }
+        
+        // Reset semua
         function resetAll() {
             if (confirm('Apakah Anda yakin ingin mereset semua?')) {
                 // Reset form
-                document.getElementById('latitude').value = '';
-                document.getElementById('longitude').value = '';
                 document.getElementById('address').value = '';
-                document.getElementById('coordOperation').value = 'none';
-                document.getElementById('offsetValue').value = '0.001';
+                document.getElementById('customText').value = '';
+                document.getElementById('locationSearch').value = '';
                 
-                // Reset waktu ke sekarang
-                setStartTimeNow();
-                
-                // Reset koordinat yang sudah direkayasa
-                manipulatedCoords = {
-                    lat: '-6.2088',
-                    lng: '106.8456'
-                };
+                // Reset koordinat
+                currentCoords = { lat: -6.2088, lng: 106.8456 };
+                updateSelectedLocation(-6.2088, 106.8456);
                 
                 // Reset preview
-                resetPreview();
+                document.getElementById('previewImage').classList.add('hidden');
+                document.getElementById('cameraPlaceholder').classList.remove('hidden');
+                document.getElementById('watermarkOverlay').classList.add('hidden');
+                document.getElementById('showWatermark').checked = true;
                 
                 // Reset data
-                mediaData = {
-                    originalDataUrl: '',
-                    watermarkedDataUrl: '',
-                    location: null,
-                    hasGeotag: false,
-                    type: 'photo',
-                    videoBlob: null
-                };
+                mediaData = { originalDataUrl: '', type: 'photo' };
                 
-                // Reset peta Leaflet
-                if (leafletMap) {
-                    updateLeafletMap(-6.2088, 106.8456);
-                }
+                // Nonaktifkan tombol download
+                document.getElementById('downloadBtn').disabled = true;
+                
+                // Reset zoom
+                watermarkScale = 1.0;
                 
                 showStatus('🔄 Semua data telah direset!', 'info');
                 setTimeout(() => {
@@ -1610,68 +1063,41 @@
                 }, 2000);
             }
         }
-
-        // Fungsi untuk menampilkan status
+        
+        // Tampilkan status
         function showStatus(message, type) {
             const statusElement = document.getElementById('statusMessage');
             statusElement.textContent = message;
             statusElement.className = `status-message ${type}`;
             statusElement.classList.remove('hidden');
             
-            // Auto hide setelah 5 detik untuk pesan info
+            // Auto hide setelah beberapa detik
             if (type === 'info') {
                 setTimeout(() => {
                     statusElement.classList.add('hidden');
-                }, 5000);
+                }, 3000);
             }
         }
-
+        
         // Event listener untuk input file
         document.getElementById('photoInput').addEventListener('change', function() {
             processPhoto(this);
         });
         
-        document.getElementById('videoInput').addEventListener('change', function() {
-            processVideo(this);
-        });
-
-        // Event listener untuk update watermark saat form berubah
-        document.getElementById('latitude').addEventListener('input', updateWatermark);
-        document.getElementById('longitude').addEventListener('input', updateWatermark);
-        document.getElementById('address').addEventListener('input', updateWatermark);
-        document.getElementById('coordOperation').addEventListener('change', updateWatermark);
-        document.getElementById('offsetValue').addEventListener('input', updateWatermark);
-        document.getElementById('startDate').addEventListener('change', setCustomStartTime);
-        document.getElementById('startTime').addEventListener('change', setCustomStartTime);
-        document.getElementById('timeRunning').addEventListener('change', function() {
-            isTimeRunning = this.checked;
-            if (isTimeRunning) {
-                startTimeUpdate();
-            } else if (timeInterval) {
-                clearInterval(timeInterval);
-                timeInterval = null;
-            }
-            updateWatermark();
-        });
-
-        // Inisialisasi watermark dengan data default
+        // Event listener untuk update otomatis
+        document.getElementById('address').addEventListener('input', updateWatermarkDisplay);
+        document.getElementById('customText').addEventListener('input', updateWatermarkDisplay);
+        
+        // Inisialisasi saat halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {
-            // Set waktu default ke sekarang
-            setStartTimeNow();
+            // Inisialisasi peta
+            initLocationMap();
             
-            // Set koordinat default
-            manipulatedCoords = {
-                lat: '-6.2088',
-                lng: '106.8456'
-            };
+            // Update watermark display dengan data default
+            updateWatermarkDisplay();
             
-            // Inisialisasi peta Leaflet dengan koordinat default
-            updateLeafletMap(-6.2088, 106.8456);
-            
-            // Mulai update waktu
-            startTimeUpdate();
-            
-            updateWatermark();
+            // Set interval untuk update waktu real-time
+            setInterval(updateWatermarkDisplay, 1000);
         });
     </script>
 </body>
