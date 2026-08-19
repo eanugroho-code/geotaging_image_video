@@ -188,6 +188,7 @@
             display: flex;
             gap: 8px;
             margin-bottom: 12px;
+            flex-wrap: wrap;
         }
         
         .search-box input {
@@ -198,6 +199,7 @@
             font-size: 14px;
             background: #faf8f5;
             transition: border-color 0.2s;
+            min-width: 150px;
         }
         
         .search-box input:focus {
@@ -217,6 +219,7 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            white-space: nowrap;
         }
         
         .search-box button:hover {
@@ -279,16 +282,25 @@
             font-weight: 600;
         }
         
-        .coord-item .value {
+        .coord-item input {
+            width: 100%;
+            border: none;
+            background: transparent;
             font-family: 'Courier New', monospace;
             font-weight: 700;
             font-size: 14px;
             color: #1a1a1a;
+            padding: 0;
+            outline: none;
+        }
+        
+        .coord-item input:focus {
+            color: #2d8f5e;
         }
         
         .action-buttons {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 8px;
             margin-top: 10px;
         }
@@ -323,6 +335,15 @@
         
         .action-buttons .btn-blue:hover {
             background: #1a4a6b;
+        }
+        
+        .action-buttons .btn-yellow {
+            background: #b7950b;
+            color: white;
+        }
+        
+        .action-buttons .btn-yellow:hover {
+            background: #9a7a0a;
         }
         
         /* ===== TIME CONTROL ===== */
@@ -515,6 +536,7 @@
             padding: 2px 0;
             line-height: 1.4;
             font-weight: 500;
+            color: #ffffff !important;
         }
         
         .watermark-text .datetime {
@@ -527,7 +549,7 @@
             font-family: 'Courier New', monospace;
             font-size: 16px;
             margin-bottom: 4px !important;
-            color: #ffcc00;
+            color: #ffffff !important;
             font-weight: 600 !important;
         }
         
@@ -671,11 +693,6 @@
             background: #616a6b;
         }
         
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        
         /* ===== STATUS ===== */
         .status-message {
             padding: 10px 14px;
@@ -777,6 +794,19 @@
                 align-items: flex-start;
                 gap: 8px;
             }
+            
+            .search-box {
+                flex-direction: column;
+            }
+            
+            .search-box input {
+                min-width: 100%;
+            }
+            
+            .search-box button {
+                width: 100%;
+                justify-content: center;
+            }
         }
         
         @media (max-width: 480px) {
@@ -814,16 +844,8 @@
                 font-size: 10px;
             }
             
-            .search-box {
-                flex-wrap: wrap;
-            }
-            
-            .search-box input {
-                min-width: 100%;
-            }
-            
-            .search-box button {
-                flex: 1;
+            .action-buttons {
+                grid-template-columns: 1fr;
             }
         }
         
@@ -918,11 +940,11 @@
                         <div class="coord-values">
                             <div class="coord-item">
                                 <label>Latitude</label>
-                                <div class="value" id="selectedLat">-6.2088</div>
+                                <input type="text" id="selectedLat" value="-6.2088" onchange="updateCoordsFromInput()">
                             </div>
                             <div class="coord-item">
                                 <label>Longitude</label>
-                                <div class="value" id="selectedLng">106.8456</div>
+                                <input type="text" id="selectedLng" value="106.8456" onchange="updateCoordsFromInput()">
                             </div>
                         </div>
                         <div class="action-buttons">
@@ -931,6 +953,9 @@
                             </button>
                             <button class="btn-blue" onclick="getAddressFromCoordinates()">
                                 <i class="bi bi-building"></i> Ambil Alamat
+                            </button>
+                            <button class="btn-yellow" onclick="updateCoordsFromInput()">
+                                <i class="bi bi-pencil"></i> Update
                             </button>
                         </div>
                     </div>
@@ -1138,6 +1163,36 @@
     }
     
     // ============================================================
+    // KOORDINAT
+    // ============================================================
+    function updateCoordsFromInput() {
+        const latInput = document.getElementById('selectedLat').value.trim();
+        const lngInput = document.getElementById('selectedLng').value.trim();
+        
+        const lat = parseFloat(latInput);
+        const lng = parseFloat(lngInput);
+        
+        if (isNaN(lat) || isNaN(lng)) {
+            showStatus('⚠️ Masukkan koordinat yang valid (contoh: -6.2088)', 'error');
+            return;
+        }
+        
+        if (lat < -90 || lat > 90) {
+            showStatus('⚠️ Latitude harus antara -90 dan 90', 'error');
+            return;
+        }
+        
+        if (lng < -180 || lng > 180) {
+            showStatus('⚠️ Longitude harus antara -180 dan 180', 'error');
+            return;
+        }
+        
+        updateSelectedLocation(lat, lng);
+        locationMap.setView([lat, lng], 15);
+        showStatus('✅ Koordinat berhasil diupdate', 'success');
+    }
+    
+    // ============================================================
     // PETA
     // ============================================================
     function initLocationMap() {
@@ -1156,11 +1211,15 @@
         selectedMarker.on('dragend', function(e) {
             const pos = e.target.getLatLng();
             updateSelectedLocation(pos.lat, pos.lng);
+            document.getElementById('selectedLat').value = pos.lat.toFixed(6);
+            document.getElementById('selectedLng').value = pos.lng.toFixed(6);
             setTimeout(() => getAddressFromCoordinates(), 500);
         });
         
         locationMap.on('click', function(e) {
             updateSelectedLocation(e.latlng.lat, e.latlng.lng);
+            document.getElementById('selectedLat').value = e.latlng.lat.toFixed(6);
+            document.getElementById('selectedLng').value = e.latlng.lng.toFixed(6);
             setTimeout(() => getAddressFromCoordinates(), 500);
         });
         
@@ -1226,8 +1285,8 @@
             selectedMarker.setLatLng([lat, lng]);
         }
         
-        document.getElementById('selectedLat').textContent = lat.toFixed(6);
-        document.getElementById('selectedLng').textContent = lng.toFixed(6);
+        document.getElementById('selectedLat').value = lat.toFixed(6);
+        document.getElementById('selectedLng').value = lng.toFixed(6);
         
         updateWatermarkDisplay();
         
@@ -1237,13 +1296,24 @@
     }
     
     function useSelectedLocation() {
-        updateWatermarkDisplay();
+        const lat = parseFloat(document.getElementById('selectedLat').value);
+        const lng = parseFloat(document.getElementById('selectedLng').value);
+        
+        if (isNaN(lat) || isNaN(lng)) {
+            showStatus('⚠️ Koordinat tidak valid', 'error');
+            return;
+        }
+        
+        updateSelectedLocation(lat, lng);
+        locationMap.setView([lat, lng], 15);
         showStatus('✅ Koordinat berhasil diterapkan', 'success');
     }
     
     async function getAddressFromCoordinates() {
+        const lat = currentCoords.lat;
+        const lng = currentCoords.lng;
         showStatus('🔍 Mengambil alamat dari koordinat...', 'info');
-        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.lat}&lon=${currentCoords.lng}&zoom=18&addressdetails=1`;
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
         try {
             const response = await fetch(url);
             const data = await response.json();
@@ -1275,6 +1345,8 @@
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
                 updateSelectedLocation(lat, lng);
+                document.getElementById('selectedLat').value = lat.toFixed(6);
+                document.getElementById('selectedLng').value = lng.toFixed(6);
                 locationMap.setView([lat, lng], 15);
                 setTimeout(() => getAddressFromCoordinates(), 500);
                 showStatus('✅ Lokasi GPS berhasil didapatkan', 'success');
@@ -1302,6 +1374,8 @@
                     const lat = parseFloat(result.lat);
                     const lng = parseFloat(result.lon);
                     updateSelectedLocation(lat, lng);
+                    document.getElementById('selectedLat').value = lat.toFixed(6);
+                    document.getElementById('selectedLng').value = lng.toFixed(6);
                     locationMap.setView([lat, lng], 15);
                     setTimeout(() => getAddressFromCoordinates(), 500);
                     showStatus('✅ Lokasi ditemukan', 'success');
@@ -1487,7 +1561,7 @@
         
         const selectedDateTime = getSelectedDateTime();
         ctx.font = `bold ${baseFontSize}px Arial`;
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'top';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
@@ -1497,12 +1571,12 @@
         ctx.fillText(formatIndonesianDateTime(selectedDateTime), textX, textY);
         
         ctx.font = `${baseFontSize * 0.85}px "Courier New", monospace`;
-        ctx.fillStyle = '#ffcc00';
+        ctx.fillStyle = '#ffffff';
         ctx.fillText(`${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)}`, textX, textY + lineSpacing);
         
         const street = document.getElementById('street').value.trim() || 'Jl. Tidak Diketahui';
         ctx.font = `${baseFontSize}px Arial`;
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = '#ffffff';
         ctx.fillText(street, textX, textY + lineSpacing * 2);
         
         const district = document.getElementById('district').value.trim();
@@ -1517,10 +1591,12 @@
         } else {
             districtText = 'Lokasi tidak diketahui';
         }
+        ctx.fillStyle = '#ffffff';
         ctx.fillText(districtText, textX, textY + lineSpacing * 3);
         
         const province = document.getElementById('province').value.trim() || 'Provinsi tidak diketahui';
         ctx.font = `bold ${baseFontSize}px Arial`;
+        ctx.fillStyle = '#ffffff';
         ctx.fillText(province, textX, textY + lineSpacing * 4);
         
         ctx.shadowBlur = 0;
@@ -1538,7 +1614,7 @@
             drawSimpleMap(ctx, mapX, mapY, mapWidth, mapHeight);
         }
         
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3;
         ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
         ctx.shadowBlur = 8;
@@ -1624,6 +1700,8 @@
         document.getElementById('autoUpdateTime').checked = true;
         
         currentCoords = { lat: -6.2088, lng: 106.8456 };
+        document.getElementById('selectedLat').value = '-6.2088';
+        document.getElementById('selectedLng').value = '106.8456';
         updateSelectedLocation(-6.2088, 106.8456);
         locationMap.setView([-6.2088, 106.8456], 13);
         
